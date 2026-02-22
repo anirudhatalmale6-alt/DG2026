@@ -1,0 +1,11 @@
+{
+    "name": "DG2026",
+    "alias": "dg2026",
+    "description": "Document Generator module - generate PDF documents from templates with client data overlay",
+    "keywords": ["document", "generator", "pdf", "template"],
+    "priority": 0,
+    "providers": [
+        "Modules\\DG2026\\Providers\\DG2026ServiceProvider"
+    ],
+    "files": []
+}
