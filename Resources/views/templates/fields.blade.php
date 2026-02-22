@@ -136,7 +136,7 @@
                             <i class="fa fa-layer-group me-1"></i> Template: <strong>{{ $page->template->name }}</strong>
                         </small>
                     </div>
-                    <a href="{{ route('docgen.templates.edit', $page->template_id) }}" class="btn btn-secondary btn-sm">
+                    <a href="{{ route('dg2026.templates.edit', $page->template_id) }}" class="btn btn-secondary btn-sm">
                         <i class="fa fa-arrow-left me-1"></i> Back to Template
                     </a>
                 </div>
@@ -755,8 +755,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // ─── Configuration ────────────────────────────────────────────────
     var CSRF_TOKEN = '{{ csrf_token() }}';
     var STORE_URL = '{{ route("docgen.fields.store", $page->id) }}';
-    var UPDATE_URL_BASE = '{{ url("cims/docgen/fields") }}';
-    var DELETE_URL_BASE = '{{ url("cims/docgen/fields") }}';
+    var UPDATE_URL_BASE = '{{ url("dg2026/fields") }}';
+    var DELETE_URL_BASE = '{{ url("dg2026/fields") }}';
 
     // Client fields data for JS filtering
     var clientFieldsData = @json($clientFields);

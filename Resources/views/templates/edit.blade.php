@@ -237,7 +237,7 @@
         <div class="card-header d-flex justify-content-between align-items-center"
              style="background: linear-gradient(135deg, #f8f9fc 0%, #eef1f8 100%); border-bottom: 2px solid #e3e8f0;">
             <div class="d-flex align-items-center gap-3">
-                <a href="{{ route('docgen.templates') }}" class="btn btn-light btn-sm border" title="Back to Templates">
+                <a href="{{ route('dg2026.templates') }}" class="btn btn-light btn-sm border" title="Back to Templates">
                     <i class="fa fa-arrow-left"></i>
                 </a>
                 <h4 class="card-title mb-0">
@@ -322,7 +322,7 @@
                     <i class="fa fa-cog"></i> Template Configuration
                 </div>
                 <div class="card-body">
-                    <form method="POST" action="{{ route('docgen.templates.update', $template->id) }}" id="templateDetailsForm">
+                    <form method="POST" action="{{ route('dg2026.templates.update', $template->id) }}" id="templateDetailsForm">
                         @csrf
                         @method('PUT')
 
@@ -418,7 +418,7 @@
 
                         {{-- Save Button --}}
                         <div class="border-top pt-3 mt-4 d-flex justify-content-end gap-2">
-                            <a href="{{ route('docgen.templates') }}" class="btn btn-outline-secondary btn-sm px-3">
+                            <a href="{{ route('dg2026.templates') }}" class="btn btn-outline-secondary btn-sm px-3">
                                 <i class="fa fa-times me-1"></i> Cancel
                             </a>
                             <button type="submit" class="btn btn-primary btn-sm px-4" id="btnSaveDetails">
@@ -556,7 +556,7 @@
                                             {{-- Actions --}}
                                             <td class="text-end pe-3">
                                                 <div class="d-flex gap-1 justify-content-end">
-                                                    <a href="{{ route('docgen.fields', $page->id) }}"
+                                                    <a href="{{ route('dg2026.fields', $page->id) }}"
                                                        class="btn btn-outline-primary btn-action-sm"
                                                        title="Configure Field Mappings"
                                                        data-bs-toggle="tooltip">
@@ -598,7 +598,7 @@
                 </div>
                 <div class="card-body">
                     <form method="POST"
-                          action="{{ route('docgen.pages.store', $template->id) }}"
+                          action="{{ route('dg2026.pages.store', $template->id) }}"
                           enctype="multipart/form-data"
                           id="addPageForm">
                         @csrf
@@ -782,7 +782,7 @@
                                                 </div>
                                             @endif
                                             <div class="border-top p-2 bg-light text-end">
-                                                <a href="{{ route('docgen.fields', $page->id) }}"
+                                                <a href="{{ route('dg2026.fields', $page->id) }}"
                                                    class="btn btn-sm btn-outline-primary">
                                                     <i class="fa fa-edit me-1"></i> Edit Fields for {{ $page->page_label }}
                                                 </a>
@@ -1033,7 +1033,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
-            fetch('{{ url("cims/docgen/pages") }}/' + pageId, {
+            fetch('{{ url("dg2026/pages") }}/' + pageId, {
                 method: 'PUT',
                 headers: {
                     'X-CSRF-TOKEN': csrfToken,
@@ -1078,7 +1078,7 @@ document.addEventListener('DOMContentLoaded', function() {
             var isActive = this.checked;
             var toggle = this;
 
-            fetch('{{ url("cims/docgen/pages") }}/' + pageId, {
+            fetch('{{ url("dg2026/pages") }}/' + pageId, {
                 method: 'PUT',
                 headers: {
                     'X-CSRF-TOKEN': csrfToken,
@@ -1135,7 +1135,7 @@ document.addEventListener('DOMContentLoaded', function() {
             btn.disabled = true;
             btn.innerHTML = '<i class="fa fa-spinner fa-spin me-1"></i> Deleting...';
 
-            fetch('{{ url("cims/docgen/pages") }}/' + deletePageId, {
+            fetch('{{ url("dg2026/pages") }}/' + deletePageId, {
                 method: 'DELETE',
                 headers: {
                     'X-CSRF-TOKEN': csrfToken,

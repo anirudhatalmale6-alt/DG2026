@@ -12,7 +12,7 @@
                     <h4 class="card-title mb-0">
                         <i class="fa fa-plus-circle text-primary me-2"></i> Create New Template
                     </h4>
-                    <a href="{{ route('docgen.templates') }}" class="btn btn-secondary btn-sm">
+                    <a href="{{ route('dg2026.templates') }}" class="btn btn-secondary btn-sm">
                         <i class="fa fa-arrow-left me-1"></i> Back to Templates
                     </a>
                 </div>
@@ -32,7 +32,7 @@
             @endif
 
             {{-- Create Template Form --}}
-            <form id="createTemplateForm" method="POST" action="{{ route('docgen.templates.store') }}">
+            <form id="createTemplateForm" method="POST" action="{{ route('dg2026.templates.store') }}">
                 @csrf
 
                 <div class="card shadow-sm border-0 mb-4">
@@ -124,7 +124,7 @@
                 <div class="card shadow-sm border-0 mb-4">
                     <div class="card-body text-center py-4">
                         <div class="d-flex justify-content-center gap-3">
-                            <a href="{{ route('docgen.templates') }}" class="btn btn-outline-secondary btn-lg px-4">
+                            <a href="{{ route('dg2026.templates') }}" class="btn btn-outline-secondary btn-lg px-4">
                                 <i class="fa fa-times me-1"></i> Cancel
                             </a>
                             <button type="submit" class="btn btn-primary btn-lg px-5" id="btnCreateTemplate">

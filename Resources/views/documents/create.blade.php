@@ -11,7 +11,7 @@
                     <h4 class="card-title mb-0">
                         <i class="fa fa-magic text-primary"></i> Generate New Document
                     </h4>
-                    <a href="{{ route('docgen.index') }}" class="btn btn-secondary btn-sm">
+                    <a href="{{ route('dg2026.index') }}" class="btn btn-secondary btn-sm">
                         <i class="fa fa-arrow-left"></i> Back to Documents
                     </a>
                 </div>
@@ -38,7 +38,7 @@
                 </div>
             @endif
 
-            <form id="generateForm" method="POST" action="{{ route('docgen.generate') }}">
+            <form id="generateForm" method="POST" action="{{ route('dg2026.generate') }}">
                 @csrf
 
                 {{-- ============================================================ --}}
@@ -129,7 +129,7 @@
                             <div class="text-center py-4">
                                 <i class="fa fa-file-alt fa-3x text-muted mb-3" style="display: block;"></i>
                                 <p class="text-muted mb-0">No active templates available. Please create a template first.</p>
-                                <a href="{{ route('docgen.templates.create') }}" class="btn btn-primary btn-sm mt-2">
+                                <a href="{{ route('dg2026.templates.create') }}" class="btn btn-primary btn-sm mt-2">
                                     <i class="fa fa-plus"></i> Create Template
                                 </a>
                             </div>
@@ -301,7 +301,7 @@
                     <div class="card-body text-center py-4">
                         <p class="text-muted mb-4">Review the information above, then click the button below to generate your PDF document.</p>
                         <div class="d-flex justify-content-center gap-3">
-                            <a href="{{ route('docgen.index') }}" class="btn btn-outline-secondary btn-lg px-4">
+                            <a href="{{ route('dg2026.index') }}" class="btn btn-outline-secondary btn-lg px-4">
                                 <i class="fa fa-times"></i> Cancel
                             </a>
                             <button type="submit" class="btn btn-primary btn-lg px-5" id="btnGenerate">

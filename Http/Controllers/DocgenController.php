@@ -163,7 +163,7 @@ class DocgenController extends Controller
 
         $this->logAction($document, 'generated', 'Document generated from template: ' . $template->name);
 
-        return redirect()->route('docgen.show', $document->id)
+        return redirect()->route('dg2026.show', $document->id)
             ->with('success', 'Document generated successfully.');
     }
 
@@ -303,7 +303,7 @@ class DocgenController extends Controller
             'created_by' => auth()->id(),
         ]);
 
-        return redirect()->route('docgen.templates.edit', $template->id)
+        return redirect()->route('dg2026.templates.edit', $template->id)
             ->with('success', 'Template created. Now add pages and configure field mappings.');
     }
 

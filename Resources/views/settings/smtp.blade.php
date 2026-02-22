@@ -13,10 +13,10 @@
                         <i class="fa fa-envelope text-primary me-2"></i> SMTP Email Configuration
                     </h4>
                     <div class="d-flex gap-2 align-items-center">
-                        <a href="{{ route('docgen.settings') }}" class="btn btn-outline-secondary btn-sm">
+                        <a href="{{ route('dg2026.settings') }}" class="btn btn-outline-secondary btn-sm">
                             <i class="fa fa-sliders-h me-1"></i> General Settings
                         </a>
-                        <a href="{{ route('docgen.index') }}" class="btn btn-outline-secondary btn-sm">
+                        <a href="{{ route('dg2026.index') }}" class="btn btn-outline-secondary btn-sm">
                             <i class="fa fa-arrow-left me-1"></i> Back to Documents
                         </a>
                     </div>
@@ -55,7 +55,7 @@
     {{-- ── SMTP Configuration Form ───────────────────────────────────────── --}}
     <div class="row">
         <div class="col-12">
-            <form method="POST" action="{{ route('docgen.smtp.save') }}" id="smtpForm">
+            <form method="POST" action="{{ route('dg2026.smtp.save') }}" id="smtpForm">
                 @csrf
 
                 <div class="card shadow-sm border-0 mb-4">

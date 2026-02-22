@@ -13,10 +13,10 @@
                         <i class="fa fa-cog text-primary me-2"></i> Document Generator Settings
                     </h4>
                     <div class="d-flex gap-2 align-items-center">
-                        <a href="{{ route('docgen.smtp') }}" class="btn btn-outline-primary btn-sm">
+                        <a href="{{ route('dg2026.smtp') }}" class="btn btn-outline-primary btn-sm">
                             <i class="fa fa-envelope-open-text me-1"></i> SMTP Settings
                         </a>
-                        <a href="{{ route('docgen.index') }}" class="btn btn-outline-secondary btn-sm">
+                        <a href="{{ route('dg2026.index') }}" class="btn btn-outline-secondary btn-sm">
                             <i class="fa fa-arrow-left me-1"></i> Back to Documents
                         </a>
                     </div>
@@ -51,7 +51,7 @@
             @endif
 
             {{-- ── Settings Form ─────────────────────────────────────────────────── --}}
-            <form id="settingsForm" method="POST" action="{{ route('docgen.settings.save') }}" enctype="multipart/form-data">
+            <form id="settingsForm" method="POST" action="{{ route('dg2026.settings.save') }}" enctype="multipart/form-data">
                 @csrf
 
                 {{-- ── Section 1: Default Font Settings ──────────────────────────── --}}
@@ -303,7 +303,7 @@
                 <div class="card shadow-sm border-0 mb-4">
                     <div class="card-body text-center py-4">
                         <div class="d-flex justify-content-center gap-3">
-                            <a href="{{ route('docgen.index') }}" class="btn btn-outline-secondary btn-lg px-4">
+                            <a href="{{ route('dg2026.index') }}" class="btn btn-outline-secondary btn-lg px-4">
                                 <i class="fa fa-times me-1"></i> Cancel
                             </a>
                             <button type="submit" class="btn btn-primary btn-lg px-5" id="btnSaveSettings">
