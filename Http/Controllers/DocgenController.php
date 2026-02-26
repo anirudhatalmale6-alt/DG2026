@@ -1,6 +1,6 @@
 <?php
 
-namespace Modules\DG2026\Http\Controllers;
+namespace Modules\CIMSDocumentGenerator\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
@@ -8,13 +8,15 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
-use Modules\DG2026\Models\DocgenTemplate;
-use Modules\DG2026\Models\DocgenTemplatePage;
-use Modules\DG2026\Models\DocgenFieldMapping;
-use Modules\DG2026\Models\DocgenDocument;
-use Modules\DG2026\Models\DocgenAuditLog;
-use Modules\DG2026\Models\DocgenSetting;
-use Modules\DG2026\Services\PdfGeneratorService;
+use Modules\CIMSDocumentGenerator\Models\DocgenTemplate;
+use Modules\CIMSDocumentGenerator\Models\DocgenTemplatePage;
+use Modules\CIMSDocumentGenerator\Models\DocgenFieldMapping;
+use Modules\CIMSDocumentGenerator\Models\DocgenDocument;
+use Modules\CIMSDocumentGenerator\Models\DocgenAuditLog;
+use Modules\CIMSDocumentGenerator\Models\DocgenSetting;
+use Modules\CIMSDocumentGenerator\Models\FormTemplateCategory;
+use Modules\CIMSDocumentGenerator\Models\CimsPeriod;
+use Modules\CIMSDocumentGenerator\Services\PdfGeneratorService;
 
 class DocgenController extends Controller
 {
@@ -22,7 +24,17 @@ class DocgenController extends Controller
 
     public function index(Request $request)
     {
-        $query = DocgenDocument::with('template')->orderBy('created_at', 'desc');
+        $query = DocgenDocument::with(['template', 'period'])->orderBy('created_at', 'desc');
+
+        // Tab filter: generated (not emailed) vs emailed
+        $tab = $request->input('tab', 'generated');
+        if ($tab === 'emailed') {
+            $query->where('emailed', true);
+        } else {
+            $query->where(function ($q) {
+                $q->where('emailed', false)->orWhereNull('emailed');
+            });
+        }
 
         if ($request->filled('search')) {
             $search = $request->input('search');
@@ -42,19 +54,51 @@ class DocgenController extends Controller
             $query->where('template_id', $request->input('template_id'));
         }
 
+        if ($request->filled('client_id')) {
+            $query->where('client_id', $request->input('client_id'));
+        }
+
+        if ($request->filled('period_id')) {
+            $query->where('period_id', $request->input('period_id'));
+        }
+
         $documents = $query->paginate(20);
         $templates = DocgenTemplate::where('is_active', true)->orderBy('name')->get();
 
-        return view('dg2026::documents.index', compact('documents', 'templates'));
+        // Clients with documents (for filter dropdown)
+        $clients = DocgenDocument::select('client_id', 'client_name', 'client_code')
+            ->whereNotNull('client_id')
+            ->where('client_id', '>', 0)
+            ->groupBy('client_id', 'client_name', 'client_code')
+            ->orderBy('client_name')
+            ->get();
+
+        // Periods for filter dropdown
+        $periods = CimsPeriod::active()->orderBy('sort_order')->get();
+
+        // Stats counts (unfiltered)
+        $totalCount = DocgenDocument::count();
+        $activeCount = DocgenDocument::where('status', 'active')->count();
+        $emailedCount = DocgenDocument::where('emailed', true)->count();
+        $generatedCount = DocgenDocument::where(function ($q) {
+            $q->where('emailed', false)->orWhereNull('emailed');
+        })->count();
+        $thisMonthCount = DocgenDocument::whereMonth('created_at', now()->month)
+            ->whereYear('created_at', now()->year)->count();
+
+        return view('cimsdocumentgenerator::documents.index', compact(
+            'documents', 'templates', 'clients', 'periods',
+            'totalCount', 'activeCount', 'emailedCount', 'generatedCount', 'thisMonthCount'
+        ));
     }
 
     public function show($id)
     {
-        $document = DocgenDocument::with(['template', 'auditLogs'])->findOrFail($id);
+        $document = DocgenDocument::with(['template', 'period', 'auditLogs'])->findOrFail($id);
 
         $this->logAction($document, 'viewed', 'Document viewed');
 
-        return view('dg2026::documents.show', compact('document'));
+        return view('cimsdocumentgenerator::documents.show', compact('document'));
     }
 
     public function viewer($id)
@@ -92,8 +136,25 @@ class DocgenController extends Controller
     public function create()
     {
         $templates = DocgenTemplate::where('is_active', true)->orderBy('name')->get();
+        $categories = FormTemplateCategory::active()->orderBy('sort_order')->get();
+        $clients = DB::table('client_master')
+            ->select('client_id', 'company_name', 'client_code', 'trading_name',
+                     'company_reg_number', 'company_reg_date', 'tax_number')
+            ->whereNull('deleted_at')
+            ->orderBy('company_name')
+            ->get();
 
-        return view('dg2026::documents.create', compact('templates'));
+        $persons = DB::table('cims_persons')
+            ->select('id', 'title', 'firstname', 'surname', 'initials', 'signature_upload', 'signature_image')
+            ->where('is_active', 1)
+            ->whereNull('deleted_at')
+            ->orderBy('surname')
+            ->orderBy('firstname')
+            ->get();
+
+        $periods = CimsPeriod::active()->orderBy('sort_order')->get();
+
+        return view('cimsdocumentgenerator::documents.create', compact('templates', 'categories', 'clients', 'persons', 'periods'));
     }
 
     public function generate(Request $request)
@@ -116,11 +177,28 @@ class DocgenController extends Controller
 
         $clientData = (array) $client;
 
-        // Add form input fields
-        $clientData['requested_by'] = $request->input('requested_by', '');
-        $clientData['prepared_by'] = $request->input('prepared_by', '');
-        $clientData['approved_by'] = $request->input('approved_by', '');
-        $clientData['signed_by'] = $request->input('signed_by', '');
+        // Resolve person IDs to names
+        $personFields = ['requested_by', 'prepared_by', 'approved_by', 'signed_by', 'witness_1', 'witness_2'];
+        $personNames = [];
+        foreach ($personFields as $field) {
+            $personId = $request->input($field);
+            if ($personId) {
+                $person = DB::table('cims_persons')->where('id', $personId)->first();
+                $personNames[$field] = $person
+                    ? trim(($person->title ? $person->title . ' ' : '') . $person->firstname . ' ' . $person->surname)
+                    : '';
+            } else {
+                $personNames[$field] = '';
+            }
+        }
+
+        // Add form input fields for PDF overlay
+        $clientData['requested_by'] = $personNames['requested_by'];
+        $clientData['prepared_by'] = $personNames['prepared_by'];
+        $clientData['approved_by'] = $personNames['approved_by'];
+        $clientData['signed_by'] = $personNames['signed_by'];
+        $clientData['witness_1'] = $personNames['witness_1'];
+        $clientData['witness_2'] = $personNames['witness_2'];
         $clientData['document_date'] = $request->input('document_date', date('Y-m-d'));
 
         // Generate unique document number
@@ -146,15 +224,18 @@ class DocgenController extends Controller
             'client_id' => $client->client_id,
             'client_code' => $client->client_code,
             'client_name' => $client->company_name,
+            'period_id' => $request->input('period_id'),
             'document_name' => $request->document_name,
             'document_number' => $docNumber,
             'file_path' => $storagePath,
             'file_name' => $fileName,
             'file_size' => file_exists($fullPath) ? filesize($fullPath) : 0,
-            'requested_by' => $request->input('requested_by'),
-            'prepared_by' => $request->input('prepared_by'),
-            'approved_by' => $request->input('approved_by'),
-            'signed_by' => $request->input('signed_by'),
+            'requested_by' => $personNames['requested_by'],
+            'prepared_by' => $personNames['prepared_by'],
+            'approved_by' => $personNames['approved_by'],
+            'signed_by' => $personNames['signed_by'],
+            'witness_1' => $personNames['witness_1'],
+            'witness_2' => $personNames['witness_2'],
             'document_date' => $request->input('document_date'),
             'notes' => $request->input('notes'),
             'status' => 'active',
@@ -163,7 +244,7 @@ class DocgenController extends Controller
 
         $this->logAction($document, 'generated', 'Document generated from template: ' . $template->name);
 
-        return redirect()->route('dg2026.show', $document->id)
+        return redirect()->route('cimsdocgen.show', $document->id)
             ->with('success', 'Document generated successfully.');
     }
 
@@ -276,12 +357,13 @@ class DocgenController extends Controller
 
         $templates = $query->paginate(20);
 
-        return view('dg2026::templates.index', compact('templates'));
+        return view('cimsdocumentgenerator::templates.index', compact('templates'));
     }
 
     public function templateCreate()
     {
-        return view('dg2026::templates.create');
+        $categories = FormTemplateCategory::active()->orderBy('sort_order')->get();
+        return view('cimsdocumentgenerator::templates.create', compact('categories'));
     }
 
     public function templateStore(Request $request)
@@ -290,20 +372,20 @@ class DocgenController extends Controller
             'name' => 'required|string|max:255',
             'code' => 'required|string|max:50|unique:docgen_templates,code',
             'description' => 'nullable|string',
-            'category' => 'nullable|string|max:255',
+            'category_id' => 'nullable|exists:cims_form_template_categories,id',
         ]);
 
         $template = DocgenTemplate::create([
             'name' => $request->name,
             'code' => strtoupper($request->code),
             'description' => $request->description,
-            'category' => $request->category,
+            'category_id' => $request->category_id,
             'is_active' => true,
             'sort_order' => DocgenTemplate::max('sort_order') + 1,
             'created_by' => auth()->id(),
         ]);
 
-        return redirect()->route('dg2026.templates.edit', $template->id)
+        return redirect()->route('cimsdocgen.templates.edit', $template->id)
             ->with('success', 'Template created. Now add pages and configure field mappings.');
     }
 
@@ -316,8 +398,9 @@ class DocgenController extends Controller
         }])->findOrFail($id);
 
         $clientFields = $this->getClientFields();
+        $categories = FormTemplateCategory::active()->orderBy('sort_order')->get();
 
-        return view('dg2026::templates.edit', compact('template', 'clientFields'));
+        return view('cimsdocumentgenerator::templates.edit', compact('template', 'clientFields', 'categories'));
     }
 
     public function templateUpdate(Request $request, $id)
@@ -328,7 +411,7 @@ class DocgenController extends Controller
             'name' => 'required|string|max:255',
             'code' => 'required|string|max:50|unique:docgen_templates,code,' . $id,
             'description' => 'nullable|string',
-            'category' => 'nullable|string|max:255',
+            'category_id' => 'nullable|exists:cims_form_template_categories,id',
             'is_active' => 'nullable|boolean',
         ]);
 
@@ -336,7 +419,7 @@ class DocgenController extends Controller
             'name' => $request->name,
             'code' => strtoupper($request->code),
             'description' => $request->description,
-            'category' => $request->category,
+            'category_id' => $request->category_id,
             'is_active' => $request->boolean('is_active'),
             'updated_by' => auth()->id(),
         ]);
@@ -356,31 +439,93 @@ class DocgenController extends Controller
 
     public function pageStore(Request $request, $id)
     {
+        \Log::info('pageStore: START - template_id=' . $id);
+
         $template = DocgenTemplate::findOrFail($id);
 
-        $request->validate([
-            'page_label' => 'nullable|string|max:255',
-            'pdf_file' => 'required|file|mimes:pdf|max:10240',
-            'orientation' => 'required|in:portrait,landscape',
-        ]);
+        // Manual validation instead of $request->validate() to control error flow
+        $errors = [];
+        if (!$request->hasFile('pdf_file')) {
+            $errors[] = 'Please select a PDF file to upload.';
+            \Log::info('pageStore: No file in request');
+        }
+        if (!$request->filled('orientation')) {
+            $errors[] = 'Please select an orientation.';
+        }
 
-        $nextPage = $template->pages()->max('page_number') + 1;
-        $nextSort = $template->pages()->max('sort_order') + 1;
+        if (!empty($errors)) {
+            \Log::info('pageStore: Validation failed - ' . implode(', ', $errors));
+            return redirect()->route('cimsdocgen.templates.edit', $id)
+                ->with('error', implode(' ', $errors))
+                ->with('active_tab', 'pages')
+                ->withInput();
+        }
 
-        // Store the PDF file
-        $path = $request->file('pdf_file')->store('docgen/templates/' . $template->id . '/pages');
+        $file = $request->file('pdf_file');
 
-        $page = DocgenTemplatePage::create([
-            'template_id' => $template->id,
-            'page_number' => $nextPage,
-            'page_label' => $request->page_label ?: 'Page ' . $nextPage,
-            'pdf_path' => $path,
-            'orientation' => $request->orientation,
-            'is_active' => true,
-            'sort_order' => $nextSort,
-        ]);
+        if (!$file->isValid()) {
+            \Log::info('pageStore: File not valid - error code: ' . $file->getError());
+            return redirect()->route('cimsdocgen.templates.edit', $id)
+                ->with('error', 'File upload error: ' . $file->getErrorMessage())
+                ->with('active_tab', 'pages')
+                ->withInput();
+        }
 
-        return back()->with('success', 'Page added successfully.');
+        $ext = strtolower($file->getClientOriginalExtension());
+        $mime = $file->getMimeType();
+        $size = $file->getSize();
+        \Log::info("pageStore: File received - name={$file->getClientOriginalName()}, ext=$ext, mime=$mime, size=$size");
+
+        // Verify it's a PDF
+        if ($ext !== 'pdf' && $mime !== 'application/pdf') {
+            \Log::info('pageStore: Not a PDF file');
+            return redirect()->route('cimsdocgen.templates.edit', $id)
+                ->with('error', 'Only PDF files are allowed. Received: ' . $ext . ' (' . $mime . ')')
+                ->with('active_tab', 'pages')
+                ->withInput();
+        }
+
+        try {
+            $nextPage = $template->pages()->max('page_number') + 1;
+            $nextSort = $template->pages()->max('sort_order') + 1;
+
+            // Store the PDF file
+            $storagePath = 'docgen/templates/' . $template->id . '/pages';
+            \Log::info("pageStore: Storing to path=$storagePath");
+
+            $path = $file->store($storagePath);
+            \Log::info("pageStore: store() returned path=$path");
+
+            if (!$path) {
+                \Log::error('pageStore: store() returned false/null');
+                return redirect()->route('cimsdocgen.templates.edit', $id)
+                    ->with('error', 'Failed to save the PDF file. Please check server storage permissions.')
+                    ->with('active_tab', 'pages')
+                    ->withInput();
+            }
+
+            $page = DocgenTemplatePage::create([
+                'template_id' => $template->id,
+                'page_number' => $nextPage,
+                'page_label' => $request->page_label ?: 'Page ' . $nextPage,
+                'pdf_path' => $path,
+                'orientation' => $request->orientation,
+                'is_active' => true,
+                'sort_order' => $nextSort,
+            ]);
+
+            \Log::info("pageStore: SUCCESS - page created id={$page->id}");
+
+            return redirect()->route('cimsdocgen.templates.edit', $id)
+                ->with('success', 'Page added successfully.')
+                ->with('active_tab', 'pages');
+        } catch (\Exception $e) {
+            \Log::error('pageStore: EXCEPTION - ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
+            return redirect()->route('cimsdocgen.templates.edit', $id)
+                ->with('error', 'Error adding page: ' . $e->getMessage())
+                ->with('active_tab', 'pages')
+                ->withInput();
+        }
     }
 
     public function pageUpdate(Request $request, $id): JsonResponse
@@ -416,12 +561,23 @@ class DocgenController extends Controller
             'pages.*.sort_order' => 'required|integer',
         ]);
 
-        foreach ($request->pages as $item) {
-            DocgenTemplatePage::where('id', $item['id'])->update([
-                'sort_order' => $item['sort_order'],
-                'page_number' => $item['sort_order'],
-            ]);
-        }
+        DB::transaction(function () use ($request) {
+            // First pass: set all to temporary high values to avoid unique constraint conflicts
+            foreach ($request->pages as $item) {
+                DocgenTemplatePage::where('id', $item['id'])->update([
+                    'sort_order' => $item['sort_order'] + 10000,
+                    'page_number' => $item['sort_order'] + 10000,
+                ]);
+            }
+
+            // Second pass: set final values
+            foreach ($request->pages as $item) {
+                DocgenTemplatePage::where('id', $item['id'])->update([
+                    'sort_order' => $item['sort_order'],
+                    'page_number' => $item['sort_order'],
+                ]);
+            }
+        });
 
         return response()->json(['success' => true, 'message' => 'Pages reordered.']);
     }
@@ -436,7 +592,7 @@ class DocgenController extends Controller
 
         $clientFields = $this->getClientFields();
 
-        return view('dg2026::templates.fields', compact('page', 'clientFields'));
+        return view('cimsdocumentgenerator::templates.fields', compact('page', 'clientFields'));
     }
 
     public function fieldStore(Request $request, $id): JsonResponse
@@ -456,7 +612,7 @@ class DocgenController extends Controller
             'template_page_id' => $page->id,
             'field_name' => $request->field_name,
             'field_label' => $request->field_label,
-            'field_source' => $request->input('field_source', 'client_master'),
+            'field_source' => $request->input('field_source') ?? 'client_master',
             'pos_x' => $request->pos_x,
             'pos_y' => $request->pos_y,
             'width' => $request->input('width'),
@@ -465,8 +621,8 @@ class DocgenController extends Controller
             'font_size' => $request->input('font_size'),
             'font_style' => $request->input('font_style'),
             'font_color' => $request->input('font_color'),
-            'text_align' => $request->input('text_align', 'left'),
-            'field_type' => $request->input('field_type', 'text'),
+            'text_align' => $request->input('text_align') ?? 'left',
+            'field_type' => $request->input('field_type') ?? 'text',
             'date_format' => $request->input('date_format'),
             'default_value' => $request->input('default_value'),
             'is_active' => true,
@@ -511,19 +667,24 @@ class DocgenController extends Controller
             'document_storage_path' => DocgenSetting::getVal('document_storage_path', 'docgen/documents'),
         ];
 
-        return view('dg2026::settings.general', compact('settings'));
+        return view('cimsdocumentgenerator::settings.general', compact('settings'));
     }
 
     public function settingsSave(Request $request)
     {
-        $keys = [
-            'default_font_family', 'default_font_size', 'default_font_color',
-            'default_text_align', 'company_name', 'document_storage_path',
+        // Map form field names to setting keys
+        $mapping = [
+            'font_family' => 'default_font_family',
+            'font_size' => 'default_font_size',
+            'font_color' => 'default_font_color',
+            'text_align' => 'default_text_align',
+            'company_name' => 'company_name',
+            'document_storage_path' => 'document_storage_path',
         ];
 
-        foreach ($keys as $key) {
-            if ($request->has($key)) {
-                DocgenSetting::setVal($key, $request->input($key));
+        foreach ($mapping as $formField => $settingKey) {
+            if ($request->has($formField)) {
+                DocgenSetting::setVal($settingKey, $request->input($formField));
             }
         }
 
@@ -550,7 +711,7 @@ class DocgenController extends Controller
             'smtp_from_name' => DocgenSetting::getVal('smtp_from_name', ''),
         ];
 
-        return view('dg2026::settings.smtp', compact('settings'));
+        return view('cimsdocumentgenerator::settings.smtp', compact('settings'));
     }
 
     public function smtpSave(Request $request)
@@ -654,14 +815,18 @@ class DocgenController extends Controller
 
     protected function logAction(DocgenDocument $document, string $action, string $details = '')
     {
-        DocgenAuditLog::create([
-            'document_id' => $document->id,
-            'action' => $action,
-            'action_by' => auth()->user()->name ?? 'System',
-            'action_by_id' => auth()->id(),
-            'details' => $details,
-            'ip_address' => request()->ip(),
-        ]);
+        try {
+            DocgenAuditLog::create([
+                'document_id' => $document->id,
+                'action' => $action,
+                'action_by' => auth()->user()->name ?? 'System',
+                'action_by_id' => auth()->id(),
+                'details' => $details,
+                'ip_address' => request()->ip(),
+            ]);
+        } catch (\Exception $e) {
+            \Log::warning('DocGen audit log failed: ' . $e->getMessage());
+        }
     }
 
     protected function getClientFields(): array
