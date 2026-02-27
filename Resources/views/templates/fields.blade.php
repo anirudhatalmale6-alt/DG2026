@@ -1,4 +1,8 @@
-@extends('smartdash::layouts.default')
+@extends('layouts.default')
+
+@push('styles')
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+@endpush
 
 @section('content')
 <style>
@@ -121,27 +125,20 @@
 
 <div class="container-fluid">
 
-    {{-- ── Page Header Card ─────────────────────────────────────────────── --}}
-    <div class="row">
-        <div class="col-12">
-            <div class="card shadow-sm border-0 mb-4">
-                <div class="card-header d-flex justify-content-between align-items-center"
-                     style="background: linear-gradient(135deg, #f8f9fc 0%, #eef1f8 100%); border-bottom: 2px solid #e3e8f0;">
-                    <div>
-                        <h4 class="card-title mb-1">
-                            <i class="fa fa-map-marker-alt text-primary me-2"></i>
-                            Field Mappings &mdash; {{ $page->page_label }} (Page {{ $page->page_number }})
-                        </h4>
-                        <small class="text-muted">
-                            <i class="fa fa-layer-group me-1"></i> Template: <strong>{{ $page->template->name }}</strong>
-                        </small>
-                    </div>
-                    <a href="{{ route('dg2026.templates.edit', $page->template_id) }}" class="btn btn-secondary btn-sm">
-                        <i class="fa fa-arrow-left me-1"></i> Back to Template
-                    </a>
-                </div>
-            </div>
+    {{-- Page Header --}}
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="mb-1">
+                <i class="fa fa-map-marker-alt text-primary me-2"></i>
+                Field Mappings &mdash; {{ $page->page_label }} (Page {{ $page->page_number }})
+            </h4>
+            <small class="text-muted">
+                <i class="fa fa-layer-group me-1"></i> Template: <strong>{{ $page->template->name }}</strong>
+            </small>
         </div>
+        <a href="{{ route('cimsdocgen.templates.edit', $page->template_id) }}" class="btn btn-secondary btn-sm">
+            <i class="fa fa-arrow-left me-1"></i> Back to Template
+        </a>
     </div>
 
     {{-- ── Flash Messages ───────────────────────────────────────────────── --}}
@@ -754,9 +751,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // ─── Configuration ────────────────────────────────────────────────
     var CSRF_TOKEN = '{{ csrf_token() }}';
-    var STORE_URL = '{{ route("docgen.fields.store", $page->id) }}';
-    var UPDATE_URL_BASE = '{{ url("dg2026/fields") }}';
-    var DELETE_URL_BASE = '{{ url("dg2026/fields") }}';
+    var STORE_URL = '{{ route("cimsdocgen.fields.store", $page->id) }}';
+    var UPDATE_URL_BASE = '{{ url("cims/document-generator/fields") }}';
+    var DELETE_URL_BASE = '{{ url("cims/document-generator/fields") }}';
 
     // Client fields data for JS filtering
     var clientFieldsData = @json($clientFields);
@@ -785,14 +782,16 @@ document.addEventListener('DOMContentLoaded', function() {
             '</div>';
         container.innerHTML = alertHtml;
 
-        // Auto-dismiss after 4 seconds
-        setTimeout(function() {
-            var alert = container.querySelector('.alert');
-            if (alert) {
-                var bsAlert = bootstrap.Alert.getOrCreateInstance(alert);
-                if (bsAlert) bsAlert.close();
-            }
-        }, 4000);
+        // Auto-dismiss: success after 4s, errors stay until manually closed
+        if (type === 'success') {
+            setTimeout(function() {
+                var alert = container.querySelector('.alert');
+                if (alert) {
+                    var bsAlert = bootstrap.Alert.getOrCreateInstance(alert);
+                    if (bsAlert) bsAlert.close();
+                }
+            }, 4000);
+        }
     }
 
     // ─── Utility: Escape HTML ─────────────────────────────────────────
@@ -1059,7 +1058,14 @@ document.addEventListener('DOMContentLoaded', function() {
             },
             body: JSON.stringify(formData)
         })
-        .then(function(response) { return response.json(); })
+        .then(function(response) {
+            if (!response.ok) {
+                return response.text().then(function(text) {
+                    try { return JSON.parse(text); } catch(e) { throw new Error('Server error (HTTP ' + response.status + '): ' + text.substring(0, 200)); }
+                });
+            }
+            return response.json();
+        })
         .then(function(data) {
             btn.disabled = false;
             btn.innerHTML = '<i class="fa fa-plus-circle me-1"></i> Add Field';
@@ -1091,13 +1097,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                     msg = errorList.join(' ');
                 }
-                showAlert('danger', msg);
+                Swal.fire({ icon: 'error', title: 'Add Field Error', text: msg, confirmButtonText: 'OK' });
             }
         })
         .catch(function(error) {
             btn.disabled = false;
             btn.innerHTML = '<i class="fa fa-plus-circle me-1"></i> Add Field';
-            showAlert('danger', 'An error occurred while adding the field. Please try again.');
+            Swal.fire({ icon: 'error', title: 'Add Field Error', text: error.message, confirmButtonText: 'OK' });
             console.error('Add field error:', error);
         });
     });

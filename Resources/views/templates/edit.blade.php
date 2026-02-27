@@ -1,4 +1,4 @@
-@extends('smartdash::layouts.default')
+@extends('layouts.default')
 
 @section('content')
 <style>
@@ -237,7 +237,7 @@
         <div class="card-header d-flex justify-content-between align-items-center"
              style="background: linear-gradient(135deg, #f8f9fc 0%, #eef1f8 100%); border-bottom: 2px solid #e3e8f0;">
             <div class="d-flex align-items-center gap-3">
-                <a href="{{ route('dg2026.templates') }}" class="btn btn-light btn-sm border" title="Back to Templates">
+                <a href="{{ route('cimsdocgen.templates') }}" class="btn btn-light btn-sm border" title="Back to Templates">
                     <i class="fa fa-arrow-left"></i>
                 </a>
                 <h4 class="card-title mb-0">
@@ -289,14 +289,14 @@
     {{-- ── Tabs Navigation ───────────────────────────────────────────────── --}}
     <ul class="nav nav-tabs nav-tabs-custom border-bottom mb-0" id="templateEditorTabs" role="tablist">
         <li class="nav-item" role="presentation">
-            <button class="nav-link active" id="details-tab" data-bs-toggle="tab" data-bs-target="#tab-details"
-                    type="button" role="tab" aria-controls="tab-details" aria-selected="true">
+            <button class="nav-link {{ session('active_tab', 'details') === 'details' ? 'active' : '' }}" id="details-tab" data-bs-toggle="tab" data-bs-target="#tab-details"
+                    type="button" role="tab" aria-controls="tab-details" aria-selected="{{ session('active_tab', 'details') === 'details' ? 'true' : 'false' }}">
                 <i class="fa fa-info-circle me-1"></i> Template Details
             </button>
         </li>
         <li class="nav-item" role="presentation">
-            <button class="nav-link" id="pages-tab" data-bs-toggle="tab" data-bs-target="#tab-pages"
-                    type="button" role="tab" aria-controls="tab-pages" aria-selected="false">
+            <button class="nav-link {{ session('active_tab') === 'pages' ? 'active' : '' }}" id="pages-tab" data-bs-toggle="tab" data-bs-target="#tab-pages"
+                    type="button" role="tab" aria-controls="tab-pages" aria-selected="{{ session('active_tab') === 'pages' ? 'true' : 'false' }}">
                 <i class="fa fa-file-alt me-1"></i> Pages
                 <span class="badge-count bg-primary bg-opacity-10 text-primary">{{ $template->pages->count() }}</span>
             </button>
@@ -316,13 +316,13 @@
         {{-- ================================================================ --}}
         {{-- TAB 1: Template Details                                          --}}
         {{-- ================================================================ --}}
-        <div class="tab-pane fade show active" id="tab-details" role="tabpanel" aria-labelledby="details-tab">
+        <div class="tab-pane fade {{ session('active_tab', 'details') === 'details' ? 'show active' : '' }}" id="tab-details" role="tabpanel" aria-labelledby="details-tab">
             <div class="card tpl-card" style="border-top-left-radius: 0; border-top-right-radius: 0;">
                 <div class="card-header">
                     <i class="fa fa-cog"></i> Template Configuration
                 </div>
                 <div class="card-body">
-                    <form method="POST" action="{{ route('dg2026.templates.update', $template->id) }}" id="templateDetailsForm">
+                    <form method="POST" action="{{ route('cimsdocgen.templates.update', $template->id) }}" id="templateDetailsForm">
                         @csrf
                         @method('PUT')
 
@@ -365,13 +365,17 @@
                             {{-- Category --}}
                             <div class="col-md-3">
                                 <label for="template_category" class="form-label tpl-label">Category</label>
-                                <input type="text"
-                                       class="form-control @error('category') is-invalid @enderror"
-                                       id="template_category"
-                                       name="category"
-                                       value="{{ old('category', $template->category) }}"
-                                       placeholder="e.g. Financial, Legal">
-                                @error('category')
+                                <select class="form-select @error('category_id') is-invalid @enderror"
+                                        id="template_category"
+                                        name="category_id">
+                                    <option value="">-- Select --</option>
+                                    @foreach($categories as $cat)
+                                        <option value="{{ $cat->id }}" {{ old('category_id', $template->category_id) == $cat->id ? 'selected' : '' }}>
+                                            {{ $cat->category_name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                @error('category_id')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
@@ -418,7 +422,7 @@
 
                         {{-- Save Button --}}
                         <div class="border-top pt-3 mt-4 d-flex justify-content-end gap-2">
-                            <a href="{{ route('dg2026.templates') }}" class="btn btn-outline-secondary btn-sm px-3">
+                            <a href="{{ route('cimsdocgen.templates') }}" class="btn btn-outline-secondary btn-sm px-3">
                                 <i class="fa fa-times me-1"></i> Cancel
                             </a>
                             <button type="submit" class="btn btn-primary btn-sm px-4" id="btnSaveDetails">
@@ -464,7 +468,7 @@
         {{-- ================================================================ --}}
         {{-- TAB 2: Template Pages                                            --}}
         {{-- ================================================================ --}}
-        <div class="tab-pane fade" id="tab-pages" role="tabpanel" aria-labelledby="pages-tab">
+        <div class="tab-pane fade {{ session('active_tab') === 'pages' ? 'show active' : '' }}" id="tab-pages" role="tabpanel" aria-labelledby="pages-tab">
 
             {{-- Pages List --}}
             <div class="card tpl-card" style="border-top-left-radius: 0; border-top-right-radius: 0;">
@@ -472,7 +476,7 @@
                     <div>
                         <i class="fa fa-layer-group"></i> Template Pages
                         <span class="badge bg-primary bg-opacity-10 text-primary ms-2" style="font-size: 0.72rem;">
-                            {{ $template->pages->count() }} {{ Str::plural('page', $template->pages->count()) }}
+                            {{ $template->pages->count() }} {{ \Illuminate\Support\Str::plural('page', $template->pages->count()) }}
                         </span>
                     </div>
                     <div class="text-muted" style="font-size: 0.75rem;">
@@ -556,7 +560,7 @@
                                             {{-- Actions --}}
                                             <td class="text-end pe-3">
                                                 <div class="d-flex gap-1 justify-content-end">
-                                                    <a href="{{ route('dg2026.fields', $page->id) }}"
+                                                    <a href="{{ route('cimsdocgen.fields', $page->id) }}"
                                                        class="btn btn-outline-primary btn-action-sm"
                                                        title="Configure Field Mappings"
                                                        data-bs-toggle="tooltip">
@@ -598,7 +602,7 @@
                 </div>
                 <div class="card-body">
                     <form method="POST"
-                          action="{{ route('dg2026.pages.store', $template->id) }}"
+                          action="{{ route('cimsdocgen.pages.store', $template->id) }}"
                           enctype="multipart/form-data"
                           id="addPageForm">
                         @csrf
@@ -699,7 +703,7 @@
                                             </span>
                                             {{ $page->page_label }}
                                             <span class="badge {{ $page->fieldMappings->count() > 0 ? 'bg-success' : 'bg-secondary' }} ms-2" style="font-size: 0.68rem;">
-                                                {{ $page->fieldMappings->count() }} {{ Str::plural('field', $page->fieldMappings->count()) }}
+                                                {{ $page->fieldMappings->count() }} {{ \Illuminate\Support\Str::plural('field', $page->fieldMappings->count()) }}
                                             </span>
                                             @if(!$page->is_active)
                                                 <span class="badge bg-danger bg-opacity-10 text-danger ms-2" style="font-size: 0.68rem;">Inactive</span>
@@ -782,7 +786,7 @@
                                                 </div>
                                             @endif
                                             <div class="border-top p-2 bg-light text-end">
-                                                <a href="{{ route('dg2026.fields', $page->id) }}"
+                                                <a href="{{ route('cimsdocgen.fields', $page->id) }}"
                                                    class="btn btn-sm btn-outline-primary">
                                                     <i class="fa fa-edit me-1"></i> Edit Fields for {{ $page->page_label }}
                                                 </a>
@@ -996,7 +1000,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
 
                 // AJAX POST to reorder
-                fetch('{{ route("docgen.pages.reorder") }}', {
+                fetch('{{ route("cimsdocgen.pages.reorder") }}', {
                     method: 'POST',
                     headers: {
                         'X-CSRF-TOKEN': csrfToken,
@@ -1033,7 +1037,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
-            fetch('{{ url("dg2026/pages") }}/' + pageId, {
+            fetch('{{ url("cims/document-generator/pages") }}/' + pageId, {
                 method: 'PUT',
                 headers: {
                     'X-CSRF-TOKEN': csrfToken,
@@ -1078,7 +1082,7 @@ document.addEventListener('DOMContentLoaded', function() {
             var isActive = this.checked;
             var toggle = this;
 
-            fetch('{{ url("dg2026/pages") }}/' + pageId, {
+            fetch('{{ url("cims/document-generator/pages") }}/' + pageId, {
                 method: 'PUT',
                 headers: {
                     'X-CSRF-TOKEN': csrfToken,
@@ -1135,7 +1139,7 @@ document.addEventListener('DOMContentLoaded', function() {
             btn.disabled = true;
             btn.innerHTML = '<i class="fa fa-spinner fa-spin me-1"></i> Deleting...';
 
-            fetch('{{ url("dg2026/pages") }}/' + deletePageId, {
+            fetch('{{ url("cims/document-generator/pages") }}/' + deletePageId, {
                 method: 'DELETE',
                 headers: {
                     'X-CSRF-TOKEN': csrfToken,

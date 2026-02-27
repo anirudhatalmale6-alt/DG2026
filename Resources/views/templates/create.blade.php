@@ -1,21 +1,18 @@
-@extends('smartdash::layouts.default')
+@extends('layouts.default')
 
 @section('content')
 <div class="container-fluid">
     <div class="row justify-content-center">
         <div class="col-lg-8 col-xl-6">
 
-            {{-- Card Header --}}
-            <div class="card shadow-sm border-0 mb-4">
-                <div class="card-header d-flex justify-content-between align-items-center"
-                     style="background: linear-gradient(135deg, #f8f9fc 0%, #eef1f8 100%); border-bottom: 2px solid #e3e8f0;">
-                    <h4 class="card-title mb-0">
-                        <i class="fa fa-plus-circle text-primary me-2"></i> Create New Template
-                    </h4>
-                    <a href="{{ route('dg2026.templates') }}" class="btn btn-secondary btn-sm">
-                        <i class="fa fa-arrow-left me-1"></i> Back to Templates
-                    </a>
-                </div>
+            {{-- Page Header --}}
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4 class="mb-0">
+                    <i class="fa fa-plus-circle text-primary me-2"></i> Create New Template
+                </h4>
+                <a href="{{ route('cimsdocgen.templates') }}" class="btn btn-secondary btn-sm">
+                    <i class="fa fa-arrow-left me-1"></i> Back to Templates
+                </a>
             </div>
 
             {{-- Validation Errors --}}
@@ -32,7 +29,7 @@
             @endif
 
             {{-- Create Template Form --}}
-            <form id="createTemplateForm" method="POST" action="{{ route('dg2026.templates.store') }}">
+            <form id="createTemplateForm" method="POST" action="{{ route('cimsdocgen.templates.store') }}">
                 @csrf
 
                 <div class="card shadow-sm border-0 mb-4">
@@ -101,19 +98,23 @@
 
                             {{-- Category --}}
                             <div class="col-12">
-                                <label for="category" class="form-label fw-semibold">Category</label>
-                                <input
-                                    type="text"
-                                    class="form-control @error('category') is-invalid @enderror"
-                                    id="category"
-                                    name="category"
-                                    value="{{ old('category') }}"
-                                    placeholder="e.g. Legal, Finance, HR, Compliance..."
+                                <label for="category_id" class="form-label fw-semibold">Category</label>
+                                <select
+                                    class="form-select @error('category_id') is-invalid @enderror"
+                                    id="category_id"
+                                    name="category_id"
                                 >
-                                @error('category')
+                                    <option value="">-- Select Category --</option>
+                                    @foreach($categories as $cat)
+                                        <option value="{{ $cat->id }}" {{ old('category_id') == $cat->id ? 'selected' : '' }}>
+                                            {{ $cat->category_name }} ({{ $cat->category_code }})
+                                        </option>
+                                    @endforeach
+                                </select>
+                                @error('category_id')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
-                                <div class="form-text text-muted">Optional grouping category for organising templates.</div>
+                                <div class="form-text text-muted">Select a department/category for this template.</div>
                             </div>
 
                         </div>
@@ -124,7 +125,7 @@
                 <div class="card shadow-sm border-0 mb-4">
                     <div class="card-body text-center py-4">
                         <div class="d-flex justify-content-center gap-3">
-                            <a href="{{ route('dg2026.templates') }}" class="btn btn-outline-secondary btn-lg px-4">
+                            <a href="{{ route('cimsdocgen.templates') }}" class="btn btn-outline-secondary btn-lg px-4">
                                 <i class="fa fa-times me-1"></i> Cancel
                             </a>
                             <button type="submit" class="btn btn-primary btn-lg px-5" id="btnCreateTemplate">

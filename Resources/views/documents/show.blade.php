@@ -1,4 +1,4 @@
-@extends('smartdash::layouts.default')
+@extends('layouts.default')
 
 @section('content')
 <style>
@@ -183,7 +183,7 @@
     <div class="card-body py-3 px-4">
         <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
             <div class="d-flex align-items-center gap-3">
-                <a href="{{ route('dg2026.index') }}" class="btn btn-light btn-sm border" title="Back to Documents">
+                <a href="{{ route('cimsdocgen.index') }}" class="btn btn-light btn-sm border" title="Back to Documents">
                     <i class="fas fa-arrow-left"></i>
                 </a>
                 <div>
@@ -197,10 +197,10 @@
 
             {{-- Action Buttons --}}
             <div class="d-flex flex-wrap align-items-center gap-2">
-                <a href="{{ route('dg2026.download', $document->id) }}" class="btn btn-primary btn-action">
+                <a href="{{ route('cimsdocgen.download', $document->id) }}" class="btn btn-primary btn-action">
                     <i class="fas fa-download me-1"></i> Download
                 </a>
-                <a href="{{ route('dg2026.viewer', $document->id) }}" target="_blank" class="btn btn-outline-secondary btn-action">
+                <a href="{{ route('cimsdocgen.viewer', $document->id) }}" target="_blank" class="btn btn-outline-secondary btn-action">
                     <i class="fas fa-file-pdf me-1"></i> View PDF
                 </a>
                 <button type="button" class="btn btn-outline-info btn-action" data-bs-toggle="modal" data-bs-target="#emailModal">
@@ -214,7 +214,7 @@
                         @foreach(['active', 'inactive', 'deleted'] as $status)
                             @if($document->status !== $status)
                                 <li>
-                                    <form action="{{ route('dg2026.status', $document->id) }}" method="POST" class="status-change-form">
+                                    <form action="{{ route('cimsdocgen.status', $document->id) }}" method="POST" class="status-change-form">
                                         @csrf
                                         <input type="hidden" name="status" value="{{ $status }}">
                                         <button type="submit" class="dropdown-item d-flex align-items-center gap-2 py-2">
@@ -399,14 +399,14 @@
         <div class="card docgen-card">
             <div class="card-header d-flex align-items-center justify-content-between">
                 <span><i class="fas fa-eye"></i> PDF Preview</span>
-                <a href="{{ route('dg2026.viewer', $document->id) }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                <a href="{{ route('cimsdocgen.viewer', $document->id) }}" target="_blank" class="btn btn-sm btn-outline-primary">
                     <i class="fas fa-expand me-1"></i> Full Screen
                 </a>
             </div>
             <div class="card-body p-0">
                 <div class="pdf-preview-frame">
                     <iframe
-                        src="{{ route('dg2026.viewer', $document->id) }}"
+                        src="{{ route('cimsdocgen.viewer', $document->id) }}"
                         width="100%"
                         height="600"
                         style="border: none; display: block;"
@@ -450,7 +450,7 @@
                 <div class="d-flex justify-content-center gap-2 flex-wrap">
                     @foreach(['active', 'inactive', 'deleted'] as $status)
                         @if($document->status !== $status)
-                            <form action="{{ route('dg2026.status', $document->id) }}" method="POST" class="d-inline status-change-form">
+                            <form action="{{ route('cimsdocgen.status', $document->id) }}" method="POST" class="d-inline status-change-form">
                                 @csrf
                                 <input type="hidden" name="status" value="{{ $status }}">
                                 @if($status === 'active')
@@ -591,7 +591,7 @@
 <div class="modal fade" id="emailModal" tabindex="-1" aria-labelledby="emailModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow">
-            <form action="{{ route('dg2026.email', $document->id) }}" method="POST" id="emailForm">
+            <form action="{{ route('cimsdocgen.email', $document->id) }}" method="POST" id="emailForm">
                 @csrf
                 <div class="modal-header border-bottom-0 pb-0">
                     <h5 class="modal-title fw-bold" id="emailModalLabel">

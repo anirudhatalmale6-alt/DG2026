@@ -1,27 +1,20 @@
-@extends('smartdash::layouts.default')
+@extends('layouts.default')
 
 @section('content')
 <div class="container-fluid">
 
-    {{-- ── Page Header Card ─────────────────────────────────────────────── --}}
-    <div class="row">
-        <div class="col-12">
-            <div class="card shadow-sm border-0 mb-4">
-                <div class="card-header d-flex justify-content-between align-items-center"
-                     style="background: linear-gradient(135deg, #f8f9fc 0%, #eef1f8 100%); border-bottom: 2px solid #e3e8f0;">
-                    <h4 class="card-title mb-0">
-                        <i class="fa fa-envelope text-primary me-2"></i> SMTP Email Configuration
-                    </h4>
-                    <div class="d-flex gap-2 align-items-center">
-                        <a href="{{ route('dg2026.settings') }}" class="btn btn-outline-secondary btn-sm">
-                            <i class="fa fa-sliders-h me-1"></i> General Settings
-                        </a>
-                        <a href="{{ route('dg2026.index') }}" class="btn btn-outline-secondary btn-sm">
-                            <i class="fa fa-arrow-left me-1"></i> Back to Documents
-                        </a>
-                    </div>
-                </div>
-            </div>
+    {{-- Page Header --}}
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4 class="mb-0">
+            <i class="fa fa-envelope text-primary me-2"></i> SMTP Email Configuration
+        </h4>
+        <div class="d-flex gap-2 align-items-center">
+            <a href="{{ route('cimsdocgen.settings') }}" class="btn btn-outline-secondary btn-sm">
+                <i class="fa fa-sliders-h me-1"></i> General Settings
+            </a>
+            <a href="{{ route('cimsdocgen.index') }}" class="btn btn-outline-secondary btn-sm">
+                <i class="fa fa-arrow-left me-1"></i> Back to Documents
+            </a>
         </div>
     </div>
 
@@ -55,7 +48,7 @@
     {{-- ── SMTP Configuration Form ───────────────────────────────────────── --}}
     <div class="row">
         <div class="col-12">
-            <form method="POST" action="{{ route('dg2026.smtp.save') }}" id="smtpForm">
+            <form method="POST" action="{{ route('cimsdocgen.smtp.save') }}" id="smtpForm">
                 @csrf
 
                 <div class="card shadow-sm border-0 mb-4">
@@ -319,7 +312,7 @@ document.addEventListener('DOMContentLoaded', function () {
             '</div> Sending test email, please wait...' +
             '</div>';
 
-        fetch('{{ route("docgen.smtp.test") }}', {
+        fetch('{{ route("cimsdocgen.smtp.test") }}', {
             method: 'POST',
             headers: {
                 'X-CSRF-TOKEN': '{{ csrf_token() }}',

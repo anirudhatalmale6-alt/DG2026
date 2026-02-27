@@ -1,4 +1,4 @@
-@extends('smartdash::layouts.default')
+@extends('layouts.default')
 
 @section('content')
 <div class="container-fluid">
@@ -13,10 +13,10 @@
                         <i class="fa fa-layer-group text-primary me-2"></i> Document Templates
                     </h4>
                     <div class="d-flex gap-2 align-items-center">
-                        <a href="{{ route('dg2026.templates.create') }}" class="btn btn-primary btn-sm shadow-sm">
+                        <a href="{{ route('cimsdocgen.templates.create') }}" class="btn btn-primary btn-sm shadow-sm">
                             <i class="fa fa-plus me-1"></i> Create Template
                         </a>
-                        <a href="{{ route('dg2026.index') }}" class="btn btn-outline-secondary btn-sm">
+                        <a href="{{ route('cimsdocgen.index') }}" class="btn btn-outline-secondary btn-sm">
                             <i class="fa fa-arrow-left me-1"></i> Back to Documents
                         </a>
                     </div>
@@ -25,7 +25,7 @@
                 <div class="card-body">
 
                     {{-- ── Search / Filter Bar ───────────────────────────────── --}}
-                    <form method="GET" action="{{ route('dg2026.templates') }}" id="searchForm">
+                    <form method="GET" action="{{ route('cimsdocgen.templates') }}" id="searchForm">
                         <div class="row g-2 mb-4">
                             <div class="col-md-5 col-lg-4">
                                 <div class="input-group input-group-sm">
@@ -52,7 +52,7 @@
                                     <i class="fa fa-filter me-1"></i> Filter
                                 </button>
                                 @if(request('search') || request('category'))
-                                    <a href="{{ route('dg2026.templates') }}" class="btn btn-sm btn-outline-secondary">
+                                    <a href="{{ route('cimsdocgen.templates') }}" class="btn btn-sm btn-outline-secondary">
                                         <i class="fa fa-times me-1"></i> Clear Filters
                                     </a>
                                 @endif
@@ -145,7 +145,7 @@
                                             <td class="text-end">
                                                 <div class="d-flex gap-1 justify-content-end">
                                                     {{-- Edit --}}
-                                                    <a href="{{ route('dg2026.templates.edit', $t->id) }}"
+                                                    <a href="{{ route('cimsdocgen.templates.edit', $t->id) }}"
                                                        class="btn btn-sm btn-outline-primary" title="Edit Template"
                                                        data-bs-toggle="tooltip">
                                                         <i class="fa fa-edit"></i>
@@ -194,11 +194,11 @@
                             </p>
                             <div class="d-flex gap-2 justify-content-center">
                                 @if(request('search') || request('category'))
-                                    <a href="{{ route('dg2026.templates') }}" class="btn btn-outline-secondary btn-sm">
+                                    <a href="{{ route('cimsdocgen.templates') }}" class="btn btn-outline-secondary btn-sm">
                                         <i class="fa fa-times me-1"></i> Clear Filters
                                     </a>
                                 @endif
-                                <a href="{{ route('dg2026.templates.create') }}" class="btn btn-primary btn-sm">
+                                <a href="{{ route('cimsdocgen.templates.create') }}" class="btn btn-primary btn-sm">
                                     <i class="fa fa-plus me-1"></i> Create Template
                                 </a>
                             </div>
@@ -244,7 +244,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
-            fetch('{{ url("dg2026/templates") }}/' + templateId, {
+            fetch('{{ url("cims/document-generator/templates") }}/' + templateId, {
                 method: 'DELETE',
                 headers: {
                     'X-CSRF-TOKEN': '{{ csrf_token() }}',

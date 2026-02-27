@@ -1,4 +1,4 @@
-@extends('smartdash::layouts.default')
+@extends('layouts.default')
 
 @section('content')
 <div class="container-fluid">
@@ -13,10 +13,10 @@
                         <i class="fa fa-file-pdf text-primary me-2"></i> Document Generator
                     </h4>
                     <div class="d-flex gap-2 align-items-center">
-                        <a href="{{ route('dg2026.create') }}" class="btn btn-primary btn-sm shadow-sm">
+                        <a href="{{ route('cimsdocgen.create') }}" class="btn btn-primary btn-sm shadow-sm">
                             <i class="fa fa-plus me-1"></i> Generate New Document
                         </a>
-                        <a href="{{ route('dg2026.templates') }}" class="btn btn-outline-secondary btn-sm">
+                        <a href="{{ route('cimsdocgen.templates') }}" class="btn btn-outline-secondary btn-sm">
                             <i class="fa fa-layer-group me-1"></i> Templates
                         </a>
                         <div class="dropdown">
@@ -26,12 +26,12 @@
                             </button>
                             <ul class="dropdown-menu dropdown-menu-end shadow-sm">
                                 <li>
-                                    <a class="dropdown-item" href="{{ route('dg2026.settings') }}">
+                                    <a class="dropdown-item" href="{{ route('cimsdocgen.settings') }}">
                                         <i class="fa fa-sliders-h me-2 text-muted"></i> General Settings
                                     </a>
                                 </li>
                                 <li>
-                                    <a class="dropdown-item" href="{{ route('dg2026.smtp') }}">
+                                    <a class="dropdown-item" href="{{ route('cimsdocgen.smtp') }}">
                                         <i class="fa fa-envelope-open-text me-2 text-muted"></i> SMTP Settings
                                     </a>
                                 </li>
@@ -43,7 +43,7 @@
                 <div class="card-body">
 
                     {{-- ── Filter Bar ──────────────────────────────────────── --}}
-                    <form method="GET" action="{{ route('dg2026.index') }}" id="filterForm">
+                    <form method="GET" action="{{ route('cimsdocgen.index') }}" id="filterForm">
                         <div class="row g-2 mb-4">
                             <div class="col-md-4 col-lg-4">
                                 <div class="input-group input-group-sm">
@@ -78,7 +78,7 @@
                                     <i class="fa fa-filter me-1"></i> Filter
                                 </button>
                                 @if(request('search') || request('status') || request('template_id'))
-                                    <a href="{{ route('dg2026.index') }}" class="btn btn-sm btn-outline-secondary">
+                                    <a href="{{ route('cimsdocgen.index') }}" class="btn btn-sm btn-outline-secondary">
                                         <i class="fa fa-times me-1"></i> Clear Filters
                                     </a>
                                 @endif
@@ -183,7 +183,7 @@
                                                 </span>
                                             </td>
                                             <td>
-                                                <a href="{{ route('dg2026.show', $document->id) }}" class="text-decoration-none fw-medium">
+                                                <a href="{{ route('cimsdocgen.show', $document->id) }}" class="text-decoration-none fw-medium">
                                                     {{ $document->document_name }}
                                                 </a>
                                             </td>
@@ -240,14 +240,14 @@
                                             <td class="text-end">
                                                 <div class="d-flex gap-1 justify-content-end">
                                                     {{-- View --}}
-                                                    <a href="{{ route('dg2026.show', $document->id) }}"
+                                                    <a href="{{ route('cimsdocgen.show', $document->id) }}"
                                                        class="btn btn-sm btn-outline-primary" title="View Document"
                                                        data-bs-toggle="tooltip">
                                                         <i class="fa fa-eye"></i>
                                                     </a>
 
                                                     {{-- Download --}}
-                                                    <a href="{{ route('dg2026.download', $document->id) }}"
+                                                    <a href="{{ route('cimsdocgen.download', $document->id) }}"
                                                        class="btn btn-sm btn-outline-success" title="Download PDF"
                                                        data-bs-toggle="tooltip">
                                                         <i class="fa fa-download"></i>
@@ -340,11 +340,11 @@
                             </p>
                             <div class="d-flex gap-2 justify-content-center">
                                 @if(request('search') || request('status') || request('template_id'))
-                                    <a href="{{ route('dg2026.index') }}" class="btn btn-outline-secondary btn-sm">
+                                    <a href="{{ route('cimsdocgen.index') }}" class="btn btn-outline-secondary btn-sm">
                                         <i class="fa fa-times me-1"></i> Clear Filters
                                     </a>
                                 @endif
-                                <a href="{{ route('dg2026.create') }}" class="btn btn-primary btn-sm">
+                                <a href="{{ route('cimsdocgen.create') }}" class="btn btn-primary btn-sm">
                                     <i class="fa fa-plus me-1"></i> Generate New Document
                                 </a>
                             </div>
@@ -421,7 +421,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             document.getElementById('emailDocumentId').value = docId;
             document.getElementById('emailSubject').value = docName + ' (' + docNumber + ')';
-            document.getElementById('emailDocumentForm').action = '{{ url("dg2026/documents") }}/' + docId + '/email';
+            document.getElementById('emailDocumentForm').action = '{{ url("cims/document-generator/documents") }}/' + docId + '/email';
 
             var modal = new bootstrap.Modal(document.getElementById('emailDocumentModal'));
             modal.show();
@@ -448,7 +448,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             var form = document.createElement('form');
             form.method = 'POST';
-            form.action = '{{ url("dg2026/documents") }}/' + docId + '/status';
+            form.action = '{{ url("cims/document-generator/documents") }}/' + docId + '/status';
             form.style.display = 'none';
 
             var csrfInput = document.createElement('input');
@@ -479,7 +479,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
-            fetch('{{ url("dg2026/documents") }}/' + docId, {
+            fetch('{{ url("cims/document-generator/documents") }}/' + docId, {
                 method: 'DELETE',
                 headers: {
                     'X-CSRF-TOKEN': '{{ csrf_token() }}',
