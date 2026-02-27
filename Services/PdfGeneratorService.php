@@ -1,9 +1,17 @@
 <?php
 
-namespace Modules\DG2026\Services;
+namespace Modules\CIMSDocumentGenerator\Services;
 
-use Modules\DG2026\Models\DocgenTemplate;
-use Modules\DG2026\Models\DocgenSetting;
+// Ensure TCPDF and FPDI are loaded (packages added outside Composer workflow)
+if (!class_exists('TCPDF')) {
+    require_once base_path('vendor/tecnickcom/tcpdf/tcpdf.php');
+}
+if (!class_exists('setasign\Fpdi\Tcpdf\Fpdi')) {
+    require_once base_path('vendor/setasign/fpdi/src/autoload.php');
+}
+
+use Modules\CIMSDocumentGenerator\Models\DocgenTemplate;
+use Modules\CIMSDocumentGenerator\Models\DocgenSetting;
 
 class PdfGeneratorService
 {
