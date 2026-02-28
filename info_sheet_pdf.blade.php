@@ -5,11 +5,11 @@
 <style>
     @page {
         size: A4 portrait;
-        margin: 6mm 8mm 6mm 8mm;
+        margin: 8mm 10mm 8mm 10mm;
     }
     body {
         font-family: 'Helvetica', sans-serif;
-        font-size: 8px;
+        font-size: 10px;
         color: #333;
         margin: 0;
         padding: 0;
@@ -19,6 +19,7 @@
     .page-border {
         border: 2px solid #000;
         padding: 0;
+        min-height: 275mm;
     }
 
     /* Header banner image */
@@ -29,47 +30,47 @@
 
     /* Company name & address bar */
     .company-bar {
-        padding: 4px 10px 2px;
+        padding: 10px 16px 6px;
     }
     .company-name {
-        font-size: 13px;
+        font-size: 16px;
         font-weight: bold;
         color: #1a1a1a;
         margin: 0;
     }
     .company-address {
-        font-size: 8px;
+        font-size: 10px;
         color: #555;
-        margin: 1px 0 0;
+        margin: 3px 0 0;
     }
     .client-code {
-        font-size: 15px;
+        font-size: 20px;
         font-weight: bold;
         color: #d6006e;
         text-align: right;
-        padding-right: 10px;
+        padding-right: 16px;
         vertical-align: bottom;
     }
 
     /* Section card */
     .card {
         border: 1px solid #ddd;
-        border-radius: 3px;
-        margin: 4px 10px;
+        border-radius: 4px;
+        margin: 10px 16px;
         overflow: hidden;
     }
     .card-header {
         background: linear-gradient(135deg, #0e6977 0%, #148f9f 100%);
         background-color: #148f9f;
-        padding: 4px 10px;
+        padding: 7px 14px;
         color: #fff;
-        font-size: 9px;
+        font-size: 11px;
         font-weight: bold;
         text-transform: uppercase;
         letter-spacing: 0.5px;
     }
     .card-body {
-        padding: 5px 8px;
+        padding: 10px 14px;
     }
 
     /* Field tables */
@@ -79,22 +80,22 @@
     }
     .field-table td {
         vertical-align: top;
-        padding: 1px 2px;
+        padding: 3px 4px;
     }
     .field-label {
-        font-size: 7px;
+        font-size: 8px;
         font-weight: bold;
         color: #1a3c4d;
-        padding-bottom: 0;
+        padding-bottom: 2px;
     }
     .field-value {
-        border: 1px solid #148f9f;
-        border-radius: 2px;
-        padding: 3px 5px;
-        font-size: 8px;
+        border: 1.5px solid #148f9f;
+        border-radius: 3px;
+        padding: 6px 10px;
+        font-size: 10px;
         color: #333;
         background: #fff;
-        min-height: 10px;
+        min-height: 14px;
     }
     .field-value.empty {
         color: #bbb;
@@ -102,50 +103,51 @@
     }
     .field-date-tag {
         color: #888;
-        font-size: 7px;
+        font-size: 9px;
     }
 
     /* EMP201 Table */
     .emp-table {
         width: 100%;
         border-collapse: collapse;
-        font-size: 7px;
+        font-size: 8px;
     }
     .emp-table thead th {
         background-color: #f0f0f0;
-        padding: 2px 2px;
+        padding: 5px 4px;
         font-weight: bold;
         color: #1a3c4d;
         text-align: left;
-        border-bottom: 1.5px solid #148f9f;
-        font-size: 6px;
+        border-bottom: 2px solid #148f9f;
+        font-size: 7px;
         text-transform: uppercase;
     }
     .emp-table thead th.r { text-align: right; }
     .emp-table thead th.c { text-align: center; }
     .emp-table tbody td {
-        padding: 2px 2px;
-        border-bottom: 0.5px solid #eee;
+        padding: 4px 4px;
+        border-bottom: 1px solid #eee;
+        font-size: 8px;
     }
     .emp-table tbody td.r { text-align: right; }
     .emp-table tbody td.c { text-align: center; }
     .emp-table tbody tr.outstanding { background-color: #fff5f5; }
     .emp-table tfoot td {
-        padding: 2px 2px;
+        padding: 5px 4px;
         font-weight: bold;
-        border-top: 1.5px solid #148f9f;
+        border-top: 2px solid #148f9f;
         background-color: #f0f0f0;
         color: #1a3c4d;
-        font-size: 7px;
+        font-size: 8px;
     }
     .emp-table tfoot td.r { text-align: right; }
 
     /* Status badges */
     .badge {
         display: inline-block;
-        padding: 0px 4px;
+        padding: 1px 6px;
         border-radius: 2px;
-        font-size: 6px;
+        font-size: 7px;
         font-weight: bold;
         text-transform: uppercase;
     }
@@ -157,27 +159,27 @@
     .summary-table {
         width: 100%;
         border-collapse: collapse;
-        margin-bottom: 4px;
+        margin-bottom: 10px;
     }
     .summary-table td {
         text-align: center;
-        padding: 3px 2px;
+        padding: 8px 4px;
         border: 1px solid #e0e0e0;
-        border-radius: 3px;
+        border-radius: 4px;
         width: 20%;
     }
     .summary-value {
-        font-size: 11px;
+        font-size: 14px;
         font-weight: bold;
-        line-height: 1.1;
+        line-height: 1.2;
     }
     .summary-label {
-        font-size: 6px;
+        font-size: 7px;
         font-weight: bold;
         text-transform: uppercase;
-        letter-spacing: 0.2px;
+        letter-spacing: 0.3px;
         color: #666;
-        margin-top: 1px;
+        margin-top: 2px;
     }
     .sc-green { background: #e8f5e9; }
     .sc-green .summary-value { color: #2e7d32; }
@@ -192,27 +194,33 @@
     .status-yes {
         color: #2e7d32;
         font-weight: bold;
-        font-size: 8px;
+        font-size: 9px;
     }
     .status-no {
         color: #c62828;
         font-weight: bold;
-        font-size: 8px;
+        font-size: 9px;
     }
 
-    /* Footer */
+    /* Footer - positioned at bottom */
+    .footer-wrapper {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+    }
     .footer {
         background-color: #148f9f;
-        padding: 4px 10px;
+        padding: 8px 16px;
         color: #fff;
-        font-size: 8px;
+        font-size: 9px;
     }
     .footer-brand {
         font-weight: bold;
-        font-size: 9px;
+        font-size: 11px;
     }
     .footer-meta {
-        font-size: 6px;
+        font-size: 7px;
         opacity: 0.8;
     }
 </style>
@@ -267,7 +275,7 @@
                     </td>
                 </tr>
             </table>
-            <div style="height:3px;"></div>
+            <div style="height:6px;"></div>
             {{-- Row 2: Tax / VAT / PAYE with dates --}}
             <table class="field-table">
                 <tr>
@@ -313,7 +321,7 @@
                     </td>
                 </tr>
             </table>
-            <div style="height:3px;"></div>
+            <div style="height:6px;"></div>
             <table class="field-table">
                 <tr>
                     <td style="width:25%;">
@@ -335,7 +343,7 @@
                 </tr>
             </table>
             @else
-            <p style="color:#999;font-style:italic;margin:2px 0;">No director details available for this client.</p>
+            <p style="color:#999;font-style:italic;margin:4px 0;">No director details available for this client.</p>
             @endif
         </div>
     </div>
@@ -396,9 +404,9 @@
                     </td>
                     <td class="{{ $isCompliant ? 'sc-green' : 'sc-red' }}">
                         @if($isCompliant && $greenBadgeBase64)
-                            <img src="{{ $greenBadgeBase64 }}" style="width:22px;height:22px;">
+                            <img src="{{ $greenBadgeBase64 }}" style="width:26px;height:26px;">
                         @elseif(!$isCompliant && $redBadgeBase64)
-                            <img src="{{ $redBadgeBase64 }}" style="width:22px;height:22px;">
+                            <img src="{{ $redBadgeBase64 }}" style="width:26px;height:26px;">
                         @else
                             <div class="summary-value">{{ $isCompliant ? 'YES' : 'NO' }}</div>
                         @endif
@@ -447,7 +455,7 @@
                         <td class="r">{{ $d ? number_format($d->uif_payable, 2) : '—' }}</td>
                         <td class="r">{{ $d ? number_format($d->penalty_interest ?? 0, 2) : '—' }}</td>
                         <td class="r"><strong>{{ $d ? number_format($d->payroll_liability, 2) : '—' }}</strong></td>
-                        <td style="font-size:6px;">{{ $d->payment_reference ?? '—' }}</td>
+                        <td style="font-size:7px;">{{ $d->payment_reference ?? '—' }}</td>
                         <td class="r">{{ $d && ($d->amount_paid ?? 0) > 0 ? number_format($d->amount_paid, 2) : '—' }}</td>
                         <td class="c">
                             @if($isRowCompliant)
@@ -478,15 +486,18 @@
     </div>
     @endif
 
+    {{-- Spacer to push footer down --}}
+    <div style="height: 10px;"></div>
+
     {{-- Footer --}}
-    <table style="width:100%;">
+    <table style="width:100%; margin-top:auto;">
         <tr>
             <td class="footer" style="width:60%;">
                 <div class="footer-brand">{{ config('app.name', 'SmartWeigh') }}</div>
                 <div class="footer-meta">Client Information Management</div>
             </td>
             <td class="footer" style="width:40%;text-align:right;">
-                <div style="font-size:14px;font-weight:bold;">{{ now()->format('Y') }}</div>
+                <div style="font-size:18px;font-weight:bold;">{{ now()->format('Y') }}</div>
                 <div class="footer-meta">{{ now()->format('F Y') }} | Generated by {{ auth()->user()->first_name ?? 'System' }} {{ auth()->user()->last_name ?? '' }}</div>
             </td>
         </tr>
