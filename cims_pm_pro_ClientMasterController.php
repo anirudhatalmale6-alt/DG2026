@@ -1859,17 +1859,176 @@ class ClientMasterController extends Controller
     /**
      * Client Info Sheet - read-only view
      */
-    public function infoSheet($id)
+    public function infoSheet($id = null)
     {
-        $client = ClientMaster::findOrFail($id);
+        // Get all active clients for the selector dropdown
+        $clients = \DB::table('client_master')
+            ->where('is_active', 1)
+            ->orderBy('company_name')
+            ->get(['client_id', 'client_code', 'company_name']);
+
+        // Get all available tax years
+        $taxYears = \DB::table('cims_document_periods')
+            ->where('is_active', 1)
+            ->whereNotNull('tax_year')
+            ->select('tax_year')
+            ->distinct()
+            ->orderByDesc('tax_year')
+            ->pluck('tax_year');
+
+        // Determine selected client (from URL param or route param)
+        $selectedClientId = $id ?: request('client_id');
+
+        // If no client selected, show empty page with selector
+        if (!$selectedClientId) {
+            return view('cims_pm_pro::clientmaster.info_sheet', compact('clients', 'taxYears'));
+        }
+
+        $client = ClientMaster::findOrFail($selectedClientId);
 
         // Get default/first address for display
         $address = \DB::table('client_master_addresses')
-            ->where('client_id', $id)
+            ->where('client_id', $selectedClientId)
             ->orderByDesc('is_default')
             ->first();
 
-        return view('cims_pm_pro::clientmaster.info_sheet', compact('client', 'address'));
+        // Get director details from client_master_directors table
+        $director = \DB::table('client_master_directors')
+            ->where('client_id', $selectedClientId)
+            ->where('is_active', 1)
+            ->first();
+
+        // EMP201 data - get available financial years for this client
+        $emp201Years = \DB::table('cims_emp201_declarations')
+            ->where('client_id', $selectedClientId)
+            ->whereNull('deleted_at')
+            ->distinct()
+            ->orderByDesc('financial_year')
+            ->pluck('financial_year');
+
+        // Default to latest year or requested year
+        $selectedYear = request('fy', $emp201Years->first());
+
+        // Get EMP201 declarations for selected financial year
+        $emp201Data = \DB::table('cims_emp201_declarations')
+            ->where('client_id', $selectedClientId)
+            ->where('financial_year', $selectedYear)
+            ->whereNull('deleted_at')
+            ->orderBy('payment_period')
+            ->get();
+
+        // Map payment_period to month names (YYYYMM -> month label)
+        $periodMonths = [];
+        if ($selectedYear) {
+            $startYear = $selectedYear - 1;
+            $periodMonths = [
+                '01' => 'March ' . $startYear,
+                '02' => 'April ' . $startYear,
+                '03' => 'May ' . $startYear,
+                '04' => 'June ' . $startYear,
+                '05' => 'July ' . $startYear,
+                '06' => 'August ' . $startYear,
+                '07' => 'September ' . $startYear,
+                '08' => 'October ' . $startYear,
+                '09' => 'November ' . $startYear,
+                '10' => 'December ' . $startYear,
+                '11' => 'January ' . $selectedYear,
+                '12' => 'February ' . $selectedYear,
+            ];
+        }
+
+        return view('cims_pm_pro::clientmaster.info_sheet', compact(
+            'clients', 'taxYears', 'client', 'address', 'director', 'emp201Years', 'selectedYear', 'emp201Data', 'periodMonths'
+        ));
+    }
+
+    public function infoSheetPdf(Request $request)
+    {
+        $clientId = $request->get('client_id');
+        if (!$clientId) {
+            return back()->with('error', 'No client selected.');
+        }
+
+        $client = ClientMaster::findOrFail($clientId);
+
+        $address = \DB::table('client_master_addresses')
+            ->where('client_id', $clientId)
+            ->orderByDesc('is_default')
+            ->first();
+
+        $director = \DB::table('client_master_directors')
+            ->where('client_id', $clientId)
+            ->where('is_active', 1)
+            ->first();
+
+        // EMP201 data
+        $emp201Years = \DB::table('cims_emp201_declarations')
+            ->where('client_id', $clientId)
+            ->whereNull('deleted_at')
+            ->distinct()
+            ->orderByDesc('financial_year')
+            ->pluck('financial_year');
+
+        $selectedYear = $request->get('fy', $emp201Years->first());
+
+        $emp201Data = \DB::table('cims_emp201_declarations')
+            ->where('client_id', $clientId)
+            ->where('financial_year', $selectedYear)
+            ->whereNull('deleted_at')
+            ->orderBy('payment_period')
+            ->get();
+
+        $periodMonths = [];
+        if ($selectedYear) {
+            $startYear = $selectedYear - 1;
+            $periodMonths = [
+                '01' => 'March ' . $startYear,
+                '02' => 'April ' . $startYear,
+                '03' => 'May ' . $startYear,
+                '04' => 'June ' . $startYear,
+                '05' => 'July ' . $startYear,
+                '06' => 'August ' . $startYear,
+                '07' => 'September ' . $startYear,
+                '08' => 'October ' . $startYear,
+                '09' => 'November ' . $startYear,
+                '10' => 'December ' . $startYear,
+                '11' => 'January ' . $selectedYear,
+                '12' => 'February ' . $selectedYear,
+            ];
+        }
+
+        // Base64 encode images for DomPDF compatibility
+        // public_path() resolves to application/public/ but assets are in public_html/storage/assets/
+        $assetsBase = base_path('../storage/assets');
+
+        $headerImgPath = $assetsBase . '/info_sheet_header.jpg';
+        $headerImgBase64 = '';
+        if (file_exists($headerImgPath)) {
+            $headerImgBase64 = 'data:image/jpeg;base64,' . base64_encode(file_get_contents($headerImgPath));
+        }
+
+        $greenBadgePath = $assetsBase . '/compliant_green.png';
+        $greenBadgeBase64 = '';
+        if (file_exists($greenBadgePath)) {
+            $greenBadgeBase64 = 'data:image/png;base64,' . base64_encode(file_get_contents($greenBadgePath));
+        }
+
+        $redBadgePath = $assetsBase . '/noncompliant_red.png';
+        $redBadgeBase64 = '';
+        if (file_exists($redBadgePath)) {
+            $redBadgeBase64 = 'data:image/png;base64,' . base64_encode(file_get_contents($redBadgePath));
+        }
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('cims_pm_pro::clientmaster.info_sheet_pdf', compact(
+            'client', 'address', 'director', 'emp201Years', 'selectedYear', 'emp201Data', 'periodMonths',
+            'headerImgBase64', 'greenBadgeBase64', 'redBadgeBase64'
+        ));
+
+        $pdf->setPaper('a4', 'portrait');
+
+        $filename = $client->client_code . ' - Client Info Sheet - ' . now()->format('d M Y') . '.pdf';
+
+        return $pdf->stream($filename);
     }
 
     public function get_director(int $id): JsonResponse
