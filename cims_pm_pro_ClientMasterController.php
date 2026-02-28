@@ -1942,6 +1942,67 @@ class ClientMasterController extends Controller
         ));
     }
 
+    /**
+     * Tax Compliance Status page
+     */
+    public function complianceStatus(Request $request)
+    {
+        // Get all active clients for the selector dropdown
+        $clients = \DB::table('client_master')
+            ->where('is_active', 1)
+            ->orderBy('company_name')
+            ->get(['client_id', 'client_code', 'company_name']);
+
+        $selectedClientId = $request->get('client_id');
+
+        if (!$selectedClientId) {
+            return view('cims_pm_pro::clientmaster.compliance_status', compact('clients'));
+        }
+
+        $client = ClientMaster::findOrFail($selectedClientId);
+
+        // EMP201 data for latest financial year
+        $emp201Years = \DB::table('cims_emp201_declarations')
+            ->where('client_id', $selectedClientId)
+            ->whereNull('deleted_at')
+            ->distinct()
+            ->orderByDesc('financial_year')
+            ->pluck('financial_year');
+
+        $selectedYear = $request->get('fy', $emp201Years->first());
+
+        $emp201Data = collect();
+        $periodMonths = [];
+        if ($selectedYear) {
+            $emp201Data = \DB::table('cims_emp201_declarations')
+                ->where('client_id', $selectedClientId)
+                ->where('financial_year', $selectedYear)
+                ->whereNull('deleted_at')
+                ->orderBy('payment_period')
+                ->get();
+
+            $startYear = $selectedYear - 1;
+            $periodMonths = [
+                '01' => 'March ' . $startYear,
+                '02' => 'April ' . $startYear,
+                '03' => 'May ' . $startYear,
+                '04' => 'June ' . $startYear,
+                '05' => 'July ' . $startYear,
+                '06' => 'August ' . $startYear,
+                '07' => 'September ' . $startYear,
+                '08' => 'October ' . $startYear,
+                '09' => 'November ' . $startYear,
+                '10' => 'December ' . $startYear,
+                '11' => 'January ' . $selectedYear,
+                '12' => 'February ' . $selectedYear,
+            ];
+        }
+
+        return view('cims_pm_pro::clientmaster.compliance_status', compact(
+            'clients', 'client', 'emp201Years', 'selectedYear', 'emp201Data', 'periodMonths'
+        ));
+    }
+
     public function infoSheetPdf(Request $request)
     {
         $clientId = $request->get('client_id');

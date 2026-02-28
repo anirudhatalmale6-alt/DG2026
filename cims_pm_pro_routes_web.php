@@ -36,7 +36,15 @@ Route::put('client/{id}/restore', [ClientMasterController::class, 'restore'])->n
 Route::put('client/{id}/activate', [ClientMasterController::class, 'activate'])->name('client.activate');
 Route::put('client/{id}/deactivate', [ClientMasterController::class, 'deactivate'])->name('client.deactivate');
 
-// Client Info Sheet
+// Tax Compliance Status
+Route::get('compliance-status', [ClientMasterController::class, 'complianceStatus'])->name('client.compliance-status');
+Route::get('compliance-status/pdf', [ClientMasterController::class, 'complianceStatusPdf'])->name('client.compliance-status-pdf');
+
+// Client Info Sheet - standalone dashboard (with client selector)
+Route::get('info-sheet', [ClientMasterController::class, 'infoSheet'])->name('client.info-sheet-dashboard');
+// Client Info Sheet - PDF generation
+Route::get('info-sheet/pdf', [ClientMasterController::class, 'infoSheetPdf'])->name('client.info-sheet-pdf');
+// Client Info Sheet - direct link (from client card)
 Route::get('client/{id}/info-sheet', [ClientMasterController::class, 'infoSheet'])->name('client.info-sheet');
 
 // Duplicate client
