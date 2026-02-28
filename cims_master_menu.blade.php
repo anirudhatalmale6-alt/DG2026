@@ -570,6 +570,35 @@ TO CHANGE COLORS:
             </li>
 
             {{-- ============================================================
+                 EMAIL - CIMS Mail
+                 ============================================================ --}}
+            <li class="cims-menu-item">
+                <a href="{{ Route::has('cimsemail.index') ? route('cimsemail.index') : '#' }}" class="cims-menu-link">
+                    <i class="fas fa-envelope"></i>
+                    <span>Email</span>
+                </a>
+                <div class="sd_tooltip_teal sd-mainmenu-tooltip">Email compose, send & templates</div>
+                <ul class="cims-submenu">
+                    <li>
+                        <a href="{{ Route::has('cimsemail.compose') ? route('cimsemail.compose') : '#' }}"><i class="fas fa-pen-to-square"></i> Compose Email</a>
+                        <div class="sd_tooltip_teal sd-menu-tooltip">Write a new email</div>
+                    </li>
+                    <li>
+                        <a href="{{ Route::has('cimsemail.sent') ? route('cimsemail.sent') : '#' }}"><i class="fas fa-paper-plane"></i> Sent Emails</a>
+                        <div class="sd_tooltip_teal sd-menu-tooltip">View sent emails</div>
+                    </li>
+                    <li>
+                        <a href="{{ Route::has('cimsemail.drafts') ? route('cimsemail.drafts') : '#' }}"><i class="fas fa-file-pen"></i> Drafts</a>
+                        <div class="sd_tooltip_teal sd-menu-tooltip">Saved drafts</div>
+                    </li>
+                    <li>
+                        <a href="{{ Route::has('cimsemail.templates') ? route('cimsemail.templates') : '#' }}"><i class="fas fa-file-code"></i> Email Templates</a>
+                        <div class="sd_tooltip_teal sd-menu-tooltip">Manage email templates</div>
+                    </li>
+                </ul>
+            </li>
+
+            {{-- ============================================================
                  DOCUMENTS - Main Menu Item 8
                  ============================================================ --}}
             <li class="cims-menu-item">
