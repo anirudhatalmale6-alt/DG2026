@@ -279,41 +279,43 @@ function buildSignatureHtml() {
     var bannerUrl = '{{ $bannerImageUrl ?? '' }}';
 
     var html = '<table cellpadding="0" cellspacing="0" style="font-family:Arial,sans-serif;font-size:13px;color:#333;border-collapse:collapse;width:100%;max-width:550px;">';
-    html += '<tr><td style="padding-bottom:8px;border-bottom:2px solid #28a745;">';
-    html += '<strong style="font-size:15px;color:#1a1a2e;">' + name + '</strong>';
-    if (title) html += '<br><span style="font-size:12px;color:#666;">' + title + '</span>';
+
+    // Name + Title with pink accent line
+    html += '<tr><td style="padding-bottom:10px;border-bottom:3px solid #E91E8C;">';
+    html += '<strong style="font-size:16px;color:#1a1a2e;letter-spacing:0.5px;">' + name + '</strong>';
+    if (title) html += '<br><span style="font-size:12px;color:#777;margin-top:2px;display:inline-block;">' + title + '</span>';
     html += '</td></tr>';
 
-    // Contact numbers row
+    // Contact numbers row - each icon a unique colour
     var contactParts = [];
-    if (phone) contactParts.push('<i class="fas fa-phone" style="color:#28a745;width:14px;font-size:11px;"></i> ' + phone);
-    if (direct) contactParts.push('<i class="fas fa-phone-volume" style="color:#28a745;width:14px;font-size:11px;"></i> ' + direct);
-    if (mobile) contactParts.push('<i class="fas fa-mobile-alt" style="color:#28a745;width:14px;font-size:11px;"></i> ' + mobile);
-    if (whatsapp) contactParts.push('<i class="fab fa-whatsapp" style="color:#25D366;width:14px;font-size:12px;"></i> ' + whatsapp);
+    if (phone) contactParts.push('<i class="fas fa-phone-alt" style="color:#2196F3;width:15px;font-size:11px;"></i> ' + phone);
+    if (direct) contactParts.push('<i class="fas fa-headset" style="color:#9C27B0;width:15px;font-size:11px;"></i> ' + direct);
+    if (mobile) contactParts.push('<i class="fas fa-mobile-alt" style="color:#FF6B35;width:15px;font-size:12px;"></i> ' + mobile);
+    if (whatsapp) contactParts.push('<i class="fab fa-whatsapp" style="color:#25D366;width:15px;font-size:13px;"></i> ' + whatsapp);
     if (contactParts.length > 0) {
-        html += '<tr><td style="padding-top:8px;">';
-        html += '<span style="font-size:12px;color:#555;">' + contactParts.join(' &nbsp;|&nbsp; ') + '</span>';
+        html += '<tr><td style="padding-top:10px;">';
+        html += '<span style="font-size:12px;color:#444;">' + contactParts.join(' &nbsp;<span style="color:#ccc;">|</span>&nbsp; ') + '</span>';
         html += '</td></tr>';
     }
 
-    // Company row
+    // Company row - bigger font
     if (company) {
-        html += '<tr><td style="padding-top:6px;">';
-        html += '<strong style="font-size:12px;color:#1a1a2e;">' + company + '</strong>';
-        if (website) html += ' &nbsp;|&nbsp; <a href="https://' + website.replace(/^https?:\/\//, '') + '" style="font-size:12px;color:#0066CC;text-decoration:none;">' + website + '</a>';
+        html += '<tr><td style="padding-top:8px;">';
+        html += '<strong style="font-size:14px;color:#1a1a2e;">' + company + '</strong>';
+        if (website) html += ' &nbsp;<span style="color:#ccc;">|</span>&nbsp; <a href="https://' + website.replace(/^https?:\/\//, '') + '" style="font-size:13px;color:#0066CC;text-decoration:none;">' + website + '</a>';
         html += '</td></tr>';
     }
 
-    // Slogan row - pink, bold, italic, bigger
+    // Slogan row - pink, italic (no bold), elegant
     if (slogan) {
         html += '<tr><td style="padding-top:3px;">';
-        html += '<strong><em style="font-size:13px;color:#E91E8C;font-style:italic;">' + slogan + '</em></strong>';
+        html += '<em style="font-size:12px;color:#E91E8C;font-style:italic;letter-spacing:0.3px;">' + slogan + '</em>';
         html += '</td></tr>';
     }
 
     // Banner image
     if (bannerUrl) {
-        html += '<tr><td style="padding-top:12px;">';
+        html += '<tr><td style="padding-top:14px;">';
         html += '<img src="' + bannerUrl + '" alt="Signature Banner" style="max-width:100%;height:auto;border-radius:4px;">';
         html += '</td></tr>';
     }

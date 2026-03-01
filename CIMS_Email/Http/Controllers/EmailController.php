@@ -632,39 +632,41 @@ class EmailController extends Controller
         } catch (\Exception $e) {}
 
         $html = '<table cellpadding="0" cellspacing="0" style="font-family:Arial,sans-serif;font-size:13px;color:#333;border-collapse:collapse;width:100%;max-width:550px;">';
-        $html .= '<tr><td style="padding-bottom:8px;border-bottom:2px solid #28a745;">';
-        $html .= '<strong style="font-size:15px;color:#1a1a2e;">' . htmlspecialchars($name) . '</strong>';
-        if ($title) $html .= '<br><span style="font-size:12px;color:#666;">' . htmlspecialchars($title) . '</span>';
+
+        // Name + Title with pink accent line
+        $html .= '<tr><td style="padding-bottom:10px;border-bottom:3px solid #E91E8C;">';
+        $html .= '<strong style="font-size:16px;color:#1a1a2e;letter-spacing:0.5px;">' . htmlspecialchars($name) . '</strong>';
+        if ($title) $html .= '<br><span style="font-size:12px;color:#777;margin-top:2px;display:inline-block;">' . htmlspecialchars($title) . '</span>';
         $html .= '</td></tr>';
 
-        // Contact numbers row
+        // Contact numbers row - each label a unique colour
         $contactParts = [];
-        if ($phone) $contactParts[] = 'Tel: ' . htmlspecialchars($phone);
-        if ($direct) $contactParts[] = 'Direct: ' . htmlspecialchars($direct);
-        if ($mobile) $contactParts[] = 'Mobile: ' . htmlspecialchars($mobile);
-        if ($whatsapp) $contactParts[] = 'WhatsApp: ' . htmlspecialchars($whatsapp);
+        if ($phone) $contactParts[] = '<span style="color:#2196F3;">Tel:</span> ' . htmlspecialchars($phone);
+        if ($direct) $contactParts[] = '<span style="color:#9C27B0;">Direct:</span> ' . htmlspecialchars($direct);
+        if ($mobile) $contactParts[] = '<span style="color:#FF6B35;">Mobile:</span> ' . htmlspecialchars($mobile);
+        if ($whatsapp) $contactParts[] = '<span style="color:#25D366;">WhatsApp:</span> ' . htmlspecialchars($whatsapp);
         if (!empty($contactParts)) {
-            $html .= '<tr><td style="padding-top:8px;">';
-            $html .= '<span style="font-size:12px;color:#555;">' . implode(' &nbsp;|&nbsp; ', $contactParts) . '</span>';
+            $html .= '<tr><td style="padding-top:10px;">';
+            $html .= '<span style="font-size:12px;color:#444;">' . implode(' &nbsp;<span style="color:#ccc;">|</span>&nbsp; ', $contactParts) . '</span>';
             $html .= '</td></tr>';
         }
 
-        // Company row
+        // Company row - bigger font
         if ($company) {
-            $html .= '<tr><td style="padding-top:6px;">';
-            $html .= '<strong style="font-size:12px;color:#1a1a2e;">' . htmlspecialchars($company) . '</strong>';
+            $html .= '<tr><td style="padding-top:8px;">';
+            $html .= '<strong style="font-size:14px;color:#1a1a2e;">' . htmlspecialchars($company) . '</strong>';
             if ($website) {
                 $url = $website;
                 if (!preg_match('/^https?:\/\//', $url)) $url = 'https://' . $url;
-                $html .= ' | <a href="' . $url . '" style="font-size:12px;color:#0066CC;text-decoration:none;">' . htmlspecialchars($website) . '</a>';
+                $html .= ' <span style="color:#ccc;">|</span> <a href="' . $url . '" style="font-size:13px;color:#0066CC;text-decoration:none;">' . htmlspecialchars($website) . '</a>';
             }
             $html .= '</td></tr>';
         }
 
-        // Slogan row - pink, bold, italic, bigger
+        // Slogan row - pink, italic (no bold), elegant
         if ($slogan) {
             $html .= '<tr><td style="padding-top:3px;">';
-            $html .= '<strong><em style="font-size:13px;color:#E91E8C;font-style:italic;">' . htmlspecialchars($slogan) . '</em></strong>';
+            $html .= '<em style="font-size:12px;color:#E91E8C;font-style:italic;letter-spacing:0.3px;">' . htmlspecialchars($slogan) . '</em>';
             $html .= '</td></tr>';
         }
 
