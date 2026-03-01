@@ -246,45 +246,59 @@ function togglePassword() {
 }
 
 function testSmtp() {
-    var form = document.querySelector('form');
+    var smtpHost = $('[name="smtp_host"]').val();
+    var fromEmail = $('[name="from_email"]').val();
 
-    // Collect form values as JSON
-    var payload = {
-        _token: '{{ csrf_token() }}',
-        smtp_host: form.querySelector('[name="smtp_host"]').value,
-        smtp_port: form.querySelector('[name="smtp_port"]').value,
-        smtp_encryption: form.querySelector('[name="smtp_encryption"]').value,
-        smtp_username: form.querySelector('[name="smtp_username"]').value,
-        smtp_password: form.querySelector('[name="smtp_password"]').value,
-        from_email: form.querySelector('[name="from_email"]').value,
-        from_name: form.querySelector('[name="from_name"]').value
-    };
+    if (!smtpHost || !fromEmail) {
+        Swal.fire({icon: 'warning', title: 'Missing Fields', text: 'Please fill in all SMTP fields first.', confirmButtonColor: '#6853E8'});
+        return;
+    }
 
-    Swal.fire({title: 'Testing SMTP...', text: 'Sending test email, please wait...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+    Swal.fire({
+        title: 'Testing SMTP...',
+        html: 'Sending test email to <strong>' + fromEmail + '</strong><br>This may take up to 30 seconds...',
+        allowOutsideClick: false,
+        showConfirmButton: false,
+        didOpen: function() { Swal.showLoading(); }
+    });
 
-    fetch('{{ route("cimsemail.settings.test") }}', {
-        method: 'POST',
-        body: JSON.stringify(payload),
-        headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
-            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+    $.ajax({
+        url: '{{ route("cimsemail.settings.test") }}',
+        type: 'POST',
+        dataType: 'json',
+        timeout: 60000,
+        data: {
+            _token: '{{ csrf_token() }}',
+            smtp_host: $('[name="smtp_host"]').val(),
+            smtp_port: $('[name="smtp_port"]').val(),
+            smtp_encryption: $('[name="smtp_encryption"]').val(),
+            smtp_username: $('[name="smtp_username"]').val(),
+            smtp_password: $('[name="smtp_password"]').val(),
+            from_email: $('[name="from_email"]').val(),
+            from_name: $('[name="from_name"]').val()
+        },
+        success: function(data) {
+            if (data.success) {
+                Swal.fire({icon: 'success', title: 'Connection Successful!', text: data.message, confirmButtonColor: '#6853E8'});
+            } else {
+                Swal.fire({icon: 'error', title: 'Connection Failed', text: data.message, confirmButtonColor: '#6853E8'});
+            }
+        },
+        error: function(xhr, status, error) {
+            var msg = 'Unknown error';
+            if (status === 'timeout') {
+                msg = 'Request timed out. The SMTP server may be slow or unreachable.';
+            } else if (xhr.responseJSON && xhr.responseJSON.message) {
+                msg = xhr.responseJSON.message;
+            } else if (xhr.status === 419) {
+                msg = 'Session expired. Please refresh the page and try again.';
+            } else if (xhr.status === 500) {
+                msg = 'Server error. Check SMTP credentials and try again.';
+            } else {
+                msg = 'Error ' + xhr.status + ': ' + (error || status);
+            }
+            Swal.fire({icon: 'error', title: 'Test Failed', text: msg, confirmButtonColor: '#6853E8'});
         }
-    })
-    .then(r => {
-        if (!r.ok) throw new Error('Server returned status ' + r.status);
-        return r.json();
-    })
-    .then(data => {
-        if (data.success) {
-            Swal.fire({icon:'success', title:'Connection Successful!', text: data.message, confirmButtonColor: 'var(--primary)'});
-        } else {
-            Swal.fire({icon:'error', title:'Connection Failed', text: data.message, confirmButtonColor: 'var(--primary)'});
-        }
-    })
-    .catch(err => {
-        Swal.fire({icon:'error', title:'Error', text: 'Failed to test connection: ' + err.message, confirmButtonColor: 'var(--primary)'});
     });
 }
 

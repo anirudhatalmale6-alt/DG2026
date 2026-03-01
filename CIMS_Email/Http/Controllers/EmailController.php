@@ -657,12 +657,25 @@ class EmailController extends Controller
     /**
      * Signature editor page
      */
-    public function signature()
+    public function signature(Request $request)
     {
-        $signature = $this->getUserSignature();
+        $editId = $request->get('edit_id');
+        if ($editId) {
+            $signature = DB::table('cims_email_signatures')->where('id', $editId)->first();
+        } else {
+            $signature = $this->getUserSignature();
+        }
+
+        // Get all signatures for the list
+        $allSignatures = DB::table('cims_email_signatures')
+            ->leftJoin('users', 'cims_email_signatures.user_id', '=', 'users.id')
+            ->select('cims_email_signatures.*', 'users.first_name', 'users.last_name', 'users.email as user_email')
+            ->orderBy('cims_email_signatures.full_name')
+            ->get();
+
         $counts = $this->getFolderCounts();
 
-        return view('cims_email::emails.signature', compact('signature', 'counts'));
+        return view('cims_email::emails.signature', compact('signature', 'allSignatures', 'counts', 'editId'));
     }
 
     /**
@@ -675,8 +688,21 @@ class EmailController extends Controller
             'designation' => 'required|string|max:200',
         ]);
 
+        // Determine which user's signature we're editing
+        $editId = $request->input('edit_id');
+        $userId = Auth::id();
+
+        if ($editId) {
+            $existing = DB::table('cims_email_signatures')->where('id', $editId)->first();
+            if ($existing) {
+                $userId = $existing->user_id;
+            }
+        } else {
+            $existing = DB::table('cims_email_signatures')->where('user_id', $userId)->first();
+        }
+
         $data = [
-            'user_id' => Auth::id(),
+            'user_id' => $userId,
             'full_name' => $request->full_name,
             'designation' => $request->designation,
             'phone' => $request->phone ?? '',
@@ -692,8 +718,6 @@ class EmailController extends Controller
             'updated_at' => now(),
         ];
 
-        $existing = DB::table('cims_email_signatures')->where('user_id', Auth::id())->first();
-
         if ($existing) {
             DB::table('cims_email_signatures')->where('id', $existing->id)->update($data);
         } else {
@@ -702,6 +726,15 @@ class EmailController extends Controller
         }
 
         return redirect()->route('cimsemail.signature')->with('success', 'Email signature saved!');
+    }
+
+    /**
+     * Delete a signature
+     */
+    public function deleteSignature($id)
+    {
+        DB::table('cims_email_signatures')->where('id', $id)->delete();
+        return redirect()->route('cimsemail.signature')->with('success', 'Signature deleted.');
     }
 
     /**

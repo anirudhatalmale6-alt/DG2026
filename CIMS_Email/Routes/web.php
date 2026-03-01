@@ -39,6 +39,7 @@ Route::post('settings/test', [EmailController::class, 'testConnection'])->name('
 // Email Signature
 Route::get('signature', [EmailController::class, 'signature'])->name('signature');
 Route::post('signature/save', [EmailController::class, 'saveSignature'])->name('signature.save');
+Route::delete('signature/{id}/delete', [EmailController::class, 'deleteSignature'])->name('signature.delete');
 
 // AJAX
 Route::get('ajax/client-contacts/{clientId}', [EmailController::class, 'getClientContacts'])->name('ajax.client-contacts');

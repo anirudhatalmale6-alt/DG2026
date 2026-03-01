@@ -29,8 +29,19 @@
                                     </div>
                                     @endif
 
+                                    @if(!empty($editId))
+                                    <div class="alert alert-warning py-2 mb-3">
+                                        <i class="fas fa-edit me-1"></i>
+                                        Editing signature for: <strong>{{ $signature->full_name ?? 'User' }}</strong>
+                                        <a href="{{ route('cimsemail.signature') }}" class="btn btn-sm btn-outline-dark ms-2"><i class="fas fa-times me-1"></i>Cancel Edit</a>
+                                    </div>
+                                    @endif
+
                                     <form method="POST" action="{{ route('cimsemail.signature.save') }}">
                                         @csrf
+                                        @if(!empty($editId))
+                                        <input type="hidden" name="edit_id" value="{{ $editId }}">
+                                        @endif
                                         {{-- Personal Details --}}
                                         <div class="filter cm-content-box box-primary">
                                             <div class="content-title SlideToolHeader">
@@ -155,6 +166,93 @@
                                             </button>
                                         </div>
                                     </form>
+
+                                    {{-- All Signatures List --}}
+                                    <div class="filter cm-content-box box-primary mt-4">
+                                        <div class="content-title SlideToolHeader">
+                                            <div class="cpa">
+                                                <i class="fas fa-list me-2"></i>All Email Signatures ({{ count($allSignatures ?? []) }})
+                                            </div>
+                                            <div class="tools">
+                                                <a href="javascript:void(0);" class="expand handle"><i class="fal fa-angle-down"></i></a>
+                                            </div>
+                                        </div>
+                                        <div class="cm-content-body form excerpt">
+                                            <div class="card-body p-0">
+                                                @if(isset($allSignatures) && count($allSignatures) > 0)
+                                                <div class="table-responsive">
+                                                    <table class="table table-hover mb-0">
+                                                        <thead>
+                                                            <tr>
+                                                                <th style="width:30px;">#</th>
+                                                                <th>Name</th>
+                                                                <th>Designation</th>
+                                                                <th>Phone / Mobile</th>
+                                                                <th>Company</th>
+                                                                <th>System User</th>
+                                                                <th>Status</th>
+                                                                <th style="width:120px;">Actions</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            @foreach($allSignatures as $idx => $sig)
+                                                            <tr>
+                                                                <td>{{ $idx + 1 }}</td>
+                                                                <td>
+                                                                    <strong>{{ $sig->full_name }}</strong>
+                                                                    @if($sig->user_id == auth()->id())
+                                                                    <span class="badge badge-sm bg-primary ms-1">You</span>
+                                                                    @endif
+                                                                </td>
+                                                                <td>{{ $sig->designation }}</td>
+                                                                <td>
+                                                                    @if($sig->phone)<span style="font-size:12px;">{{ $sig->phone }}</span>@endif
+                                                                    @if($sig->phone && $sig->mobile) / @endif
+                                                                    @if($sig->mobile)<span style="font-size:12px;">{{ $sig->mobile }}</span>@endif
+                                                                </td>
+                                                                <td style="font-size:12px;">{{ $sig->company_name }}</td>
+                                                                <td style="font-size:12px;">
+                                                                    {{ trim(($sig->first_name ?? '') . ' ' . ($sig->last_name ?? '')) ?: '-' }}
+                                                                    @if($sig->user_email)
+                                                                    <br><span class="text-muted">{{ $sig->user_email }}</span>
+                                                                    @endif
+                                                                </td>
+                                                                <td>
+                                                                    @if($sig->is_active)
+                                                                    <span class="badge bg-success">Active</span>
+                                                                    @else
+                                                                    <span class="badge bg-secondary">Inactive</span>
+                                                                    @endif
+                                                                </td>
+                                                                <td>
+                                                                    <div class="d-flex gap-1">
+                                                                        <a href="{{ route('cimsemail.signature', ['edit_id' => $sig->id]) }}" class="btn btn-xs btn-primary light" style="display:inline-flex;align-items:center;padding:4px 10px;font-size:12px;" title="Edit">
+                                                                            <i class="fas fa-edit me-1"></i>Edit
+                                                                        </a>
+                                                                        <form method="POST" action="{{ route('cimsemail.signature.delete', $sig->id) }}" style="display:inline;" onsubmit="return confirm('Delete signature for {{ addslashes($sig->full_name) }}?');">
+                                                                            @csrf
+                                                                            @method('DELETE')
+                                                                            <button type="submit" class="btn btn-xs btn-danger light" style="display:inline-flex;align-items:center;padding:4px 10px;font-size:12px;" title="Delete">
+                                                                                <i class="fas fa-trash-alt"></i>
+                                                                            </button>
+                                                                        </form>
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                            @endforeach
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                                @else
+                                                <div class="card-body text-center py-4">
+                                                    <i class="fas fa-signature fa-2x text-muted mb-2"></i>
+                                                    <p class="text-muted mb-0">No signatures created yet. Fill in the form above to create your first signature.</p>
+                                                </div>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    </div>
+
                                 </div>
                             </div>
                         </div>
