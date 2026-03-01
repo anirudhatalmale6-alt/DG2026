@@ -276,17 +276,19 @@ function buildSignatureHtml() {
     var website = document.getElementById('sigWebsite').value || '';
     var slogan = document.getElementById('sigSlogan').value || '';
 
+    var bannerUrl = '{{ $bannerImageUrl ?? '' }}';
+
     var html = '<table cellpadding="0" cellspacing="0" style="font-family:Arial,sans-serif;font-size:13px;color:#333;border-collapse:collapse;width:100%;max-width:550px;">';
-    html += '<tr><td style="padding-bottom:8px;border-bottom:2px solid #6853E8;">';
+    html += '<tr><td style="padding-bottom:8px;border-bottom:2px solid #28a745;">';
     html += '<strong style="font-size:15px;color:#1a1a2e;">' + name + '</strong>';
     if (title) html += '<br><span style="font-size:12px;color:#666;">' + title + '</span>';
     html += '</td></tr>';
 
     // Contact numbers row
     var contactParts = [];
-    if (phone) contactParts.push('<i class="fas fa-phone" style="color:#6853E8;width:14px;font-size:11px;"></i> ' + phone);
-    if (direct) contactParts.push('<i class="fas fa-phone-volume" style="color:#6853E8;width:14px;font-size:11px;"></i> ' + direct);
-    if (mobile) contactParts.push('<i class="fas fa-mobile-alt" style="color:#6853E8;width:14px;font-size:11px;"></i> ' + mobile);
+    if (phone) contactParts.push('<i class="fas fa-phone" style="color:#28a745;width:14px;font-size:11px;"></i> ' + phone);
+    if (direct) contactParts.push('<i class="fas fa-phone-volume" style="color:#28a745;width:14px;font-size:11px;"></i> ' + direct);
+    if (mobile) contactParts.push('<i class="fas fa-mobile-alt" style="color:#28a745;width:14px;font-size:11px;"></i> ' + mobile);
     if (whatsapp) contactParts.push('<i class="fab fa-whatsapp" style="color:#25D366;width:14px;font-size:12px;"></i> ' + whatsapp);
     if (contactParts.length > 0) {
         html += '<tr><td style="padding-top:8px;">';
@@ -298,14 +300,21 @@ function buildSignatureHtml() {
     if (company) {
         html += '<tr><td style="padding-top:6px;">';
         html += '<strong style="font-size:12px;color:#1a1a2e;">' + company + '</strong>';
-        if (website) html += ' &nbsp;|&nbsp; <a href="https://' + website.replace(/^https?:\/\//, '') + '" style="font-size:12px;color:#6853E8;text-decoration:none;">' + website + '</a>';
+        if (website) html += ' &nbsp;|&nbsp; <a href="https://' + website.replace(/^https?:\/\//, '') + '" style="font-size:12px;color:#0066CC;text-decoration:none;">' + website + '</a>';
         html += '</td></tr>';
     }
 
-    // Slogan row - separate from everything else
+    // Slogan row - pink, bold, italic, bigger
     if (slogan) {
-        html += '<tr><td style="padding-top:2px;">';
-        html += '<em style="font-size:11px;color:#6853E8;font-style:italic;">' + slogan + '</em>';
+        html += '<tr><td style="padding-top:3px;">';
+        html += '<strong><em style="font-size:13px;color:#E91E8C;font-style:italic;">' + slogan + '</em></strong>';
+        html += '</td></tr>';
+    }
+
+    // Banner image
+    if (bannerUrl) {
+        html += '<tr><td style="padding-top:12px;">';
+        html += '<img src="' + bannerUrl + '" alt="Signature Banner" style="max-width:100%;height:auto;border-radius:4px;">';
         html += '</td></tr>';
     }
 

@@ -482,9 +482,20 @@ class EmailController extends Controller
             'from_email' => 'required|email',
             'from_name' => 'required|string',
             'disclaimer_html' => 'nullable|string',
+            'signature_banner' => 'nullable|image|max:2048',
+            'signature_banner_url' => 'nullable|string',
         ]);
 
-        $keys = ['smtp_host', 'smtp_port', 'smtp_encryption', 'smtp_username', 'smtp_password', 'from_email', 'from_name', 'disclaimer_html'];
+        // Handle banner image upload
+        if ($request->hasFile('signature_banner')) {
+            $file = $request->file('signature_banner');
+            $filename = 'email_signature_banner_' . time() . '.' . $file->getClientOriginalExtension();
+            $file->move(base_path('../storage/email_assets'), $filename);
+            $bannerUrl = url('/storage/email_assets/' . $filename);
+            $request->merge(['signature_banner_url' => $bannerUrl]);
+        }
+
+        $keys = ['smtp_host', 'smtp_port', 'smtp_encryption', 'smtp_username', 'smtp_password', 'from_email', 'from_name', 'disclaimer_html', 'signature_banner_url'];
 
         foreach ($keys as $key) {
             DB::table('cims_email_settings')->updateOrInsert(
@@ -612,8 +623,16 @@ class EmailController extends Controller
 
         if (empty($name)) return '';
 
+        // Get banner image URL from global settings
+        $bannerUrl = '';
+        try {
+            $bannerUrl = DB::table('cims_email_settings')
+                ->where('setting_key', 'signature_banner_url')
+                ->value('setting_value') ?? '';
+        } catch (\Exception $e) {}
+
         $html = '<table cellpadding="0" cellspacing="0" style="font-family:Arial,sans-serif;font-size:13px;color:#333;border-collapse:collapse;width:100%;max-width:550px;">';
-        $html .= '<tr><td style="padding-bottom:8px;border-bottom:2px solid #6853E8;">';
+        $html .= '<tr><td style="padding-bottom:8px;border-bottom:2px solid #28a745;">';
         $html .= '<strong style="font-size:15px;color:#1a1a2e;">' . htmlspecialchars($name) . '</strong>';
         if ($title) $html .= '<br><span style="font-size:12px;color:#666;">' . htmlspecialchars($title) . '</span>';
         $html .= '</td></tr>';
@@ -637,15 +656,22 @@ class EmailController extends Controller
             if ($website) {
                 $url = $website;
                 if (!preg_match('/^https?:\/\//', $url)) $url = 'https://' . $url;
-                $html .= ' | <a href="' . $url . '" style="font-size:12px;color:#6853E8;text-decoration:none;">' . htmlspecialchars($website) . '</a>';
+                $html .= ' | <a href="' . $url . '" style="font-size:12px;color:#0066CC;text-decoration:none;">' . htmlspecialchars($website) . '</a>';
             }
             $html .= '</td></tr>';
         }
 
-        // Slogan row - separate line below company
+        // Slogan row - pink, bold, italic, bigger
         if ($slogan) {
-            $html .= '<tr><td style="padding-top:2px;">';
-            $html .= '<em style="font-size:11px;color:#6853E8;font-style:italic;">' . htmlspecialchars($slogan) . '</em>';
+            $html .= '<tr><td style="padding-top:3px;">';
+            $html .= '<strong><em style="font-size:13px;color:#E91E8C;font-style:italic;">' . htmlspecialchars($slogan) . '</em></strong>';
+            $html .= '</td></tr>';
+        }
+
+        // Banner image
+        if ($bannerUrl) {
+            $html .= '<tr><td style="padding-top:12px;">';
+            $html .= '<img src="' . htmlspecialchars($bannerUrl) . '" alt="Signature Banner" style="max-width:100%;height:auto;border-radius:4px;">';
             $html .= '</td></tr>';
         }
 
@@ -673,9 +699,17 @@ class EmailController extends Controller
             ->orderBy('cims_email_signatures.full_name')
             ->get();
 
+        // Get banner image URL from global settings
+        $bannerImageUrl = '';
+        try {
+            $bannerImageUrl = DB::table('cims_email_settings')
+                ->where('setting_key', 'signature_banner_url')
+                ->value('setting_value') ?? '';
+        } catch (\Exception $e) {}
+
         $counts = $this->getFolderCounts();
 
-        return view('cims_email::emails.signature', compact('signature', 'allSignatures', 'counts', 'editId'));
+        return view('cims_email::emails.signature', compact('signature', 'allSignatures', 'counts', 'editId', 'bannerImageUrl'));
     }
 
     /**

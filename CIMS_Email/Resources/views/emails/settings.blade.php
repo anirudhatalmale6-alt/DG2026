@@ -44,7 +44,7 @@
                                     </div>
                                     @endif
 
-                                    <form method="POST" action="{{ route('cimsemail.settings.save') }}">
+                                    <form method="POST" action="{{ route('cimsemail.settings.save') }}" enctype="multipart/form-data">
                                         @csrf
                                         {{-- SMTP Server Settings --}}
                                         <div class="filter cm-content-box box-primary">
@@ -146,6 +146,46 @@
                                                         This disclaimer is automatically appended at the bottom of <strong>every outgoing email</strong> for all users. This is a company-wide default.
                                                     </div>
                                                     <textarea name="disclaimer_html" class="form-control" rows="8" placeholder="Enter your company email disclaimer text here...">{{ $settings['disclaimer_html'] ?? '' }}</textarea>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {{-- Signature Banner Image (Global) --}}
+                                        <div class="filter cm-content-box box-primary mt-4">
+                                            <div class="content-title SlideToolHeader">
+                                                <div class="cpa">
+                                                    <i class="fas fa-image me-2"></i>Signature Banner Image (Global)
+                                                </div>
+                                                <div class="tools">
+                                                    <a href="javascript:void(0);" class="expand handle"><i class="fal fa-angle-down"></i></a>
+                                                </div>
+                                            </div>
+                                            <div class="cm-content-body form excerpt">
+                                                <div class="card-body">
+                                                    <div class="alert alert-info py-2" style="font-size:12px;">
+                                                        <i class="fas fa-info-circle me-1"></i>
+                                                        This image is displayed at the bottom of <strong>every user's email signature</strong>. Upload a company banner, logo strip, or promotional image.
+                                                    </div>
+                                                    @if(!empty($settings['signature_banner_url']))
+                                                    <div class="mb-3 p-3" style="background:#f8f9fa;border:1px solid #eee;border-radius:6px;">
+                                                        <label class="form-label text-muted" style="font-size:11px;">Current Banner:</label>
+                                                        <div>
+                                                            <img src="{{ $settings['signature_banner_url'] }}" alt="Current Banner" style="max-width:100%;max-height:150px;border-radius:4px;">
+                                                        </div>
+                                                    </div>
+                                                    @endif
+                                                    <div class="row">
+                                                        <div class="col-xl-6 col-md-6 mb-3">
+                                                            <label class="form-label">Upload New Banner Image</label>
+                                                            <input type="file" name="signature_banner" class="form-control" accept="image/*">
+                                                            <div class="form-text">PNG, JPG, or GIF. Max 2MB. Recommended width: 500-600px.</div>
+                                                        </div>
+                                                        <div class="col-xl-6 col-md-6 mb-3">
+                                                            <label class="form-label">Or Paste Image URL</label>
+                                                            <input type="text" name="signature_banner_url" class="form-control" placeholder="https://example.com/banner.png" value="{{ $settings['signature_banner_url'] ?? '' }}">
+                                                            <div class="form-text">Direct link to an image hosted elsewhere. Upload takes priority over URL.</div>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
