@@ -247,18 +247,29 @@ function togglePassword() {
 
 function testSmtp() {
     var form = document.querySelector('form');
-    var formData = new FormData(form);
-    formData.append('test_connection', '1');
+
+    // Collect form values as JSON
+    var payload = {
+        _token: '{{ csrf_token() }}',
+        smtp_host: form.querySelector('[name="smtp_host"]').value,
+        smtp_port: form.querySelector('[name="smtp_port"]').value,
+        smtp_encryption: form.querySelector('[name="smtp_encryption"]').value,
+        smtp_username: form.querySelector('[name="smtp_username"]').value,
+        smtp_password: form.querySelector('[name="smtp_password"]').value,
+        from_email: form.querySelector('[name="from_email"]').value,
+        from_name: form.querySelector('[name="from_name"]').value
+    };
 
     Swal.fire({title: 'Testing SMTP...', text: 'Sending test email, please wait...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
 
     fetch('{{ route("cimsemail.settings.test") }}', {
         method: 'POST',
-        body: formData,
+        body: JSON.stringify(payload),
         headers: {
-            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'Content-Type': 'application/json',
             'Accept': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest'
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
         }
     })
     .then(r => {

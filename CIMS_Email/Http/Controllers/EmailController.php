@@ -502,19 +502,31 @@ class EmailController extends Controller
     public function testConnection(Request $request)
     {
         try {
+            $smtpHost = $request->input('smtp_host', '');
+            $smtpPort = $request->input('smtp_port', '587');
+            $smtpEncryption = $request->input('smtp_encryption', '');
+            $smtpUsername = $request->input('smtp_username', '');
+            $smtpPassword = $request->input('smtp_password', '');
+            $fromEmail = $request->input('from_email', '') ?: $smtpUsername;
+            $fromName = $request->input('from_name', '') ?: 'SmartWeigh CIMS';
+
+            if (empty($smtpHost) || empty($smtpUsername) || empty($smtpPassword)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Please fill in all required SMTP fields before testing.'
+                ]);
+            }
+
             // Temporarily configure SMTP
             Config::set('mail.default', 'smtp');
-            Config::set('mail.mailers.smtp.host', $request->smtp_host);
-            Config::set('mail.mailers.smtp.port', $request->smtp_port);
-            Config::set('mail.mailers.smtp.encryption', $request->smtp_encryption ?: null);
-            Config::set('mail.mailers.smtp.username', $request->smtp_username);
-            Config::set('mail.mailers.smtp.password', $request->smtp_password);
+            Config::set('mail.mailers.smtp.host', $smtpHost);
+            Config::set('mail.mailers.smtp.port', (int) $smtpPort);
+            Config::set('mail.mailers.smtp.encryption', $smtpEncryption ?: null);
+            Config::set('mail.mailers.smtp.username', $smtpUsername);
+            Config::set('mail.mailers.smtp.password', $smtpPassword);
 
             // Purge the smtp mailer to force re-creation with new config
             app('mail.manager')->purge('smtp');
-
-            $fromEmail = $request->from_email ?: $request->smtp_username;
-            $fromName = $request->from_name ?: 'SmartWeigh CIMS';
 
             // Send a test email to the from address
             Mail::raw('This is a test email from CIMS Email Module. If you receive this, your SMTP settings are working correctly!', function ($message) use ($fromEmail, $fromName) {
@@ -528,7 +540,7 @@ class EmailController extends Controller
                 'message' => 'SMTP connection successful! A test email was sent to ' . $fromEmail
             ]);
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'SMTP connection failed: ' . $e->getMessage()
