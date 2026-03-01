@@ -481,9 +481,10 @@ class EmailController extends Controller
             'smtp_password' => 'required|string',
             'from_email' => 'required|email',
             'from_name' => 'required|string',
+            'disclaimer_html' => 'nullable|string',
         ]);
 
-        $keys = ['smtp_host', 'smtp_port', 'smtp_encryption', 'smtp_username', 'smtp_password', 'from_email', 'from_name'];
+        $keys = ['smtp_host', 'smtp_port', 'smtp_encryption', 'smtp_username', 'smtp_password', 'from_email', 'from_name', 'disclaimer_html'];
 
         foreach ($keys as $key) {
             DB::table('cims_email_settings')->updateOrInsert(
@@ -555,13 +556,20 @@ class EmailController extends Controller
     }
 
     /**
-     * Build disclaimer HTML from signature record
+     * Build disclaimer HTML from global settings
      */
-    private function buildDisclaimerHtml($signature)
+    private function buildDisclaimerHtml($signature = null)
     {
-        if (!$signature || empty($signature->disclaimer_html)) return '';
+        try {
+            $disclaimer = DB::table('cims_email_settings')
+                ->where('setting_key', 'disclaimer_html')
+                ->value('setting_value');
+        } catch (\Exception $e) {
+            $disclaimer = null;
+        }
 
-        $disclaimer = $signature->disclaimer_html;
+        if (empty($disclaimer)) return '';
+
         return '<div style="margin-top:15px;padding:10px 12px;border-top:1px solid #ddd;font-size:10px;color:#888;line-height:1.5;background:#fafafa;border-radius:4px;">'
             . nl2br(htmlspecialchars($disclaimer))
             . '</div>';
@@ -598,28 +606,38 @@ class EmailController extends Controller
         if ($title) $html .= '<br><span style="font-size:12px;color:#666;">' . htmlspecialchars($title) . '</span>';
         $html .= '</td></tr>';
 
-        $html .= '<tr><td style="padding-top:8px;">';
+        // Contact numbers row
         $contactParts = [];
         if ($phone) $contactParts[] = 'Tel: ' . htmlspecialchars($phone);
         if ($direct) $contactParts[] = 'Direct: ' . htmlspecialchars($direct);
         if ($mobile) $contactParts[] = 'Mobile: ' . htmlspecialchars($mobile);
         if ($whatsapp) $contactParts[] = 'WhatsApp: ' . htmlspecialchars($whatsapp);
         if (!empty($contactParts)) {
-            $html .= '<span style="font-size:12px;color:#555;">' . implode(' &nbsp;|&nbsp; ', $contactParts) . '</span><br>';
+            $html .= '<tr><td style="padding-top:8px;">';
+            $html .= '<span style="font-size:12px;color:#555;">' . implode(' &nbsp;|&nbsp; ', $contactParts) . '</span>';
+            $html .= '</td></tr>';
         }
+
+        // Company row
         if ($company) {
+            $html .= '<tr><td style="padding-top:6px;">';
             $html .= '<strong style="font-size:12px;color:#1a1a2e;">' . htmlspecialchars($company) . '</strong>';
             if ($website) {
                 $url = $website;
                 if (!preg_match('/^https?:\/\//', $url)) $url = 'https://' . $url;
                 $html .= ' | <a href="' . $url . '" style="font-size:12px;color:#6853E8;text-decoration:none;">' . htmlspecialchars($website) . '</a>';
             }
-            $html .= '<br>';
+            $html .= '</td></tr>';
         }
+
+        // Slogan row - separate line below company
         if ($slogan) {
-            $html .= '<em style="font-size:11px;color:#6853E8;font-style:italic;">' . htmlspecialchars($slogan) . '</em><br>';
+            $html .= '<tr><td style="padding-top:2px;">';
+            $html .= '<em style="font-size:11px;color:#6853E8;font-style:italic;">' . htmlspecialchars($slogan) . '</em>';
+            $html .= '</td></tr>';
         }
-        $html .= '</td></tr></table>';
+
+        $html .= '</table>';
 
         return $html;
     }

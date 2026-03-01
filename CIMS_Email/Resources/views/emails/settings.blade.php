@@ -129,6 +129,27 @@
                                             </div>
                                         </div>
 
+                                        {{-- Global Email Disclaimer --}}
+                                        <div class="filter cm-content-box box-primary mt-4">
+                                            <div class="content-title SlideToolHeader">
+                                                <div class="cpa">
+                                                    <i class="fas fa-shield-alt me-2"></i>Email Disclaimer (Global)
+                                                </div>
+                                                <div class="tools">
+                                                    <a href="javascript:void(0);" class="expand handle"><i class="fal fa-angle-down"></i></a>
+                                                </div>
+                                            </div>
+                                            <div class="cm-content-body form excerpt">
+                                                <div class="card-body">
+                                                    <div class="alert alert-info py-2" style="font-size:12px;">
+                                                        <i class="fas fa-info-circle me-1"></i>
+                                                        This disclaimer is automatically appended at the bottom of <strong>every outgoing email</strong> for all users. This is a company-wide default.
+                                                    </div>
+                                                    <textarea name="disclaimer_html" class="form-control" rows="8" placeholder="Enter your company email disclaimer text here...">{{ $settings['disclaimer_html'] ?? '' }}</textarea>
+                                                </div>
+                                            </div>
+                                        </div>
+
                                         {{-- Action Buttons --}}
                                         <div class="mt-4 d-flex gap-2">
                                             <button type="submit" class="btn btn-primary">

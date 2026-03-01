@@ -104,27 +104,6 @@
                                             </div>
                                         </div>
 
-                                        {{-- Disclaimer Message --}}
-                                        <div class="filter cm-content-box box-primary mt-4">
-                                            <div class="content-title SlideToolHeader">
-                                                <div class="cpa">
-                                                    <i class="fas fa-shield-alt me-2"></i>Email Disclaimer
-                                                </div>
-                                                <div class="tools">
-                                                    <a href="javascript:void(0);" class="expand handle"><i class="fal fa-angle-down"></i></a>
-                                                </div>
-                                            </div>
-                                            <div class="cm-content-body form excerpt">
-                                                <div class="card-body">
-                                                    <p class="text-muted mb-3" style="font-size:12px;">
-                                                        <i class="fas fa-info-circle me-1"></i>
-                                                        This disclaimer is automatically appended at the bottom of every outgoing email.
-                                                    </p>
-                                                    <textarea name="disclaimer_html" id="sigDisclaimer" class="form-control" rows="8" placeholder="Enter your email disclaimer text here...">{{ $signature->disclaimer_html ?? '' }}</textarea>
-                                                </div>
-                                            </div>
-                                        </div>
-
                                         {{-- Custom Signature HTML (Advanced) --}}
                                         <div class="filter cm-content-box box-primary mt-4">
                                             <div class="content-title SlideToolHeader">
@@ -198,7 +177,6 @@ function buildSignatureHtml() {
     var company = document.getElementById('sigCompany').value || '';
     var website = document.getElementById('sigWebsite').value || '';
     var slogan = document.getElementById('sigSlogan').value || '';
-    var disclaimer = document.getElementById('sigDisclaimer').value || '';
 
     var html = '<table cellpadding="0" cellspacing="0" style="font-family:Arial,sans-serif;font-size:13px;color:#333;border-collapse:collapse;width:100%;max-width:550px;">';
     html += '<tr><td style="padding-bottom:8px;border-bottom:2px solid #6853E8;">';
@@ -206,32 +184,30 @@ function buildSignatureHtml() {
     if (title) html += '<br><span style="font-size:12px;color:#666;">' + title + '</span>';
     html += '</td></tr>';
 
-    html += '<tr><td style="padding-top:8px;">';
+    // Contact numbers row
     var contactParts = [];
     if (phone) contactParts.push('<i class="fas fa-phone" style="color:#6853E8;width:14px;font-size:11px;"></i> ' + phone);
     if (direct) contactParts.push('<i class="fas fa-phone-volume" style="color:#6853E8;width:14px;font-size:11px;"></i> ' + direct);
     if (mobile) contactParts.push('<i class="fas fa-mobile-alt" style="color:#6853E8;width:14px;font-size:11px;"></i> ' + mobile);
     if (whatsapp) contactParts.push('<i class="fab fa-whatsapp" style="color:#25D366;width:14px;font-size:12px;"></i> ' + whatsapp);
     if (contactParts.length > 0) {
-        html += '<span style="font-size:12px;color:#555;">' + contactParts.join(' &nbsp;|&nbsp; ') + '</span><br>';
+        html += '<tr><td style="padding-top:8px;">';
+        html += '<span style="font-size:12px;color:#555;">' + contactParts.join(' &nbsp;|&nbsp; ') + '</span>';
+        html += '</td></tr>';
     }
 
+    // Company row
     if (company) {
+        html += '<tr><td style="padding-top:6px;">';
         html += '<strong style="font-size:12px;color:#1a1a2e;">' + company + '</strong>';
         if (website) html += ' &nbsp;|&nbsp; <a href="https://' + website.replace(/^https?:\/\//, '') + '" style="font-size:12px;color:#6853E8;text-decoration:none;">' + website + '</a>';
-        html += '<br>';
+        html += '</td></tr>';
     }
-    if (slogan) {
-        html += '<em style="font-size:11px;color:#6853E8;font-style:italic;">' + slogan + '</em><br>';
-    }
-    html += '</td></tr>';
 
-    // Disclaimer
-    if (disclaimer) {
-        html += '<tr><td style="padding-top:15px;">';
-        html += '<div style="margin-top:10px;padding:10px 12px;border-top:1px solid #ddd;font-size:10px;color:#888;line-height:1.5;background:#fafafa;border-radius:4px;">';
-        html += disclaimer.replace(/\n/g, '<br>');
-        html += '</div>';
+    // Slogan row - separate from everything else
+    if (slogan) {
+        html += '<tr><td style="padding-top:2px;">';
+        html += '<em style="font-size:11px;color:#6853E8;font-style:italic;">' + slogan + '</em>';
         html += '</td></tr>';
     }
 
@@ -251,7 +227,7 @@ function updatePreview() {
 }
 
 // Live preview on field changes
-document.querySelectorAll('#sigName, #sigTitle, #sigPhone, #sigMobile, #sigDirect, #sigWhatsapp, #sigCompany, #sigWebsite, #sigSlogan, #sigDisclaimer').forEach(function(el) {
+document.querySelectorAll('#sigName, #sigTitle, #sigPhone, #sigMobile, #sigDirect, #sigWhatsapp, #sigCompany, #sigWebsite, #sigSlogan').forEach(function(el) {
     el.addEventListener('input', function() {
         if (!document.getElementById('sigCustomHtml').value.trim()) {
             updatePreview();
