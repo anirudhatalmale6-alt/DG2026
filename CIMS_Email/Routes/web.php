@@ -41,6 +41,14 @@ Route::get('signature', [EmailController::class, 'signature'])->name('signature'
 Route::post('signature/save', [EmailController::class, 'saveSignature'])->name('signature.save');
 Route::delete('signature/{id}/delete', [EmailController::class, 'deleteSignature'])->name('signature.delete');
 
+// Contacts CRUD
+Route::get('contacts', [EmailController::class, 'contacts'])->name('contacts');
+Route::post('contacts/store', [EmailController::class, 'storeContact'])->name('contacts.store');
+Route::put('contacts/{id}', [EmailController::class, 'updateContact'])->name('contacts.update');
+Route::delete('contacts/{id}', [EmailController::class, 'deleteContact'])->name('contacts.delete');
+
 // AJAX
 Route::get('ajax/client-contacts/{clientId}', [EmailController::class, 'getClientContacts'])->name('ajax.client-contacts');
 Route::get('ajax/signature', [EmailController::class, 'getSignatureHtml'])->name('ajax.signature');
+Route::get('ajax/contact/{id}', [EmailController::class, 'getContact'])->name('ajax.contact');
+Route::post('ajax/check-duplicate-contact', [EmailController::class, 'checkDuplicateContact'])->name('ajax.check-duplicate');

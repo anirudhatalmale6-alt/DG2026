@@ -101,10 +101,12 @@ class EmailController extends Controller
      */
     public function compose(Request $request)
     {
-        $clients = DB::table('client_master')
-            ->where('is_active', 1)
-            ->orderBy('company_name')
-            ->get(['client_id', 'client_code', 'company_name']);
+        $showAll = $request->get('show_all', 0);
+        $clientQuery = DB::table('client_master')->orderBy('company_name');
+        if (!$showAll) {
+            $clientQuery->where('is_active', 1);
+        }
+        $clients = $clientQuery->get(['client_id', 'client_code', 'company_name', 'is_active']);
 
         $templates = DB::table('cims_email_templates')
             ->where('is_active', 1)
@@ -129,7 +131,52 @@ class EmailController extends Controller
         $signatureHtml = $this->buildSignatureHtml($signature);
         $disclaimerHtml = $this->buildDisclaimerHtml($signature);
 
-        return view('cims_email::emails.compose', compact('clients', 'templates', 'draft', 'selectedClientId', 'counts', 'signatureHtml', 'disclaimerHtml'));
+        // FROM address from SMTP settings
+        $settings = [];
+        try {
+            $settings = DB::table('cims_email_settings')->pluck('setting_value', 'setting_key')->toArray();
+        } catch (\Exception $e) {}
+        $fromEmail = $settings['from_email'] ?? ($settings['smtp_username'] ?? '');
+        $fromName = $settings['from_name'] ?? 'SmartWeigh CIMS';
+
+        // Recent contacts (last 10 unique emails from sent emails)
+        $recentContacts = [];
+        try {
+            $recentEmails = DB::table('cims_emails')
+                ->where('user_id', Auth::id())
+                ->where('folder', 'sent')
+                ->whereNotNull('to_emails')
+                ->orderByDesc('sent_at')
+                ->limit(50)
+                ->pluck('to_emails');
+
+            $seen = [];
+            foreach ($recentEmails as $toJson) {
+                $emails = json_decode($toJson, true) ?: [];
+                foreach ($emails as $email) {
+                    $email = trim($email);
+                    if ($email && !isset($seen[$email]) && count($seen) < 10) {
+                        $seen[$email] = true;
+                        // Try to find name from contacts
+                        $contact = DB::table('cims_master_contacts')
+                            ->where('email', $email)
+                            ->where('is_active', 1)
+                            ->first(['first_name', 'last_name', 'known_as']);
+                        $recentContacts[] = [
+                            'email' => $email,
+                            'name' => $contact ? trim($contact->first_name . ' ' . $contact->last_name) : $email,
+                            'known_as' => $contact->known_as ?? '',
+                        ];
+                    }
+                }
+            }
+        } catch (\Exception $e) {}
+
+        return view('cims_email::emails.compose', compact(
+            'clients', 'templates', 'draft', 'selectedClientId', 'counts',
+            'signatureHtml', 'disclaimerHtml', 'fromEmail', 'fromName',
+            'recentContacts', 'showAll'
+        ));
     }
 
     /**
@@ -138,6 +185,7 @@ class EmailController extends Controller
     public function send(Request $request)
     {
         $request->validate([
+            'client_id' => 'required|integer',
             'to_emails' => 'required|string',
             'subject' => 'required|string|max:500',
             'body_html' => 'required|string',
@@ -428,27 +476,25 @@ class EmailController extends Controller
     }
 
     /**
-     * Get client contacts (AJAX)
+     * Get client contacts (AJAX) - from cims_master_contacts
      */
     public function getClientContacts($clientId)
     {
-        $client = DB::table('client_master')->where('client_id', $clientId)->first();
-        $directors = DB::table('client_master_directors')
+        $contacts = DB::table('cims_master_contacts')
             ->where('client_id', $clientId)
             ->where('is_active', 1)
-            ->get(['firstname', 'surname', 'email']);
+            ->orderByDesc('is_primary')
+            ->orderBy('first_name')
+            ->get(['id', 'title', 'first_name', 'last_name', 'known_as', 'email', 'phone', 'mobile', 'whatsapp', 'position', 'gender', 'photo', 'source']);
 
-        $contacts = [];
-        if ($client && $client->email) {
-            $contacts[] = ['name' => $client->company_name, 'email' => $client->email, 'type' => 'Company'];
-        }
-        foreach ($directors as $d) {
-            if ($d->email) {
-                $contacts[] = ['name' => trim($d->firstname . ' ' . $d->surname), 'email' => $d->email, 'type' => 'Director'];
-            }
-        }
+        $client = DB::table('client_master')
+            ->where('client_id', $clientId)
+            ->first(['client_id', 'client_code', 'company_name', 'trading_name', 'tax_number']);
 
-        return response()->json($contacts);
+        return response()->json([
+            'contacts' => $contacts,
+            'client' => $client,
+        ]);
     }
 
     /**
@@ -813,5 +859,263 @@ class EmailController extends Controller
         $signature = $this->getUserSignature();
         $html = $this->buildSignatureHtml($signature);
         return response()->json(['html' => $html]);
+    }
+
+    // =========================================================================
+    // CONTACT MANAGEMENT
+    // =========================================================================
+
+    /**
+     * Contacts list page (card grid)
+     */
+    public function contacts(Request $request)
+    {
+        $search = $request->get('search', '');
+        $clientFilter = $request->get('client_id');
+        $showAll = $request->get('show_all', 0);
+
+        $query = DB::table('cims_master_contacts')
+            ->leftJoin('client_master', 'cims_master_contacts.client_id', '=', 'client_master.client_id')
+            ->select(
+                'cims_master_contacts.*',
+                'client_master.company_name',
+                'client_master.client_code'
+            );
+
+        // Default: only active contacts, unless show_all=1
+        if (!$showAll) {
+            $query->where('cims_master_contacts.is_active', 1);
+        }
+
+        // Search across key fields
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('cims_master_contacts.first_name', 'like', "%{$search}%")
+                  ->orWhere('cims_master_contacts.last_name', 'like', "%{$search}%")
+                  ->orWhere('cims_master_contacts.known_as', 'like', "%{$search}%")
+                  ->orWhere('cims_master_contacts.email', 'like', "%{$search}%")
+                  ->orWhere('client_master.company_name', 'like', "%{$search}%");
+            });
+        }
+
+        // Filter by specific client
+        if ($clientFilter) {
+            $query->where('cims_master_contacts.client_id', $clientFilter);
+        }
+
+        $contacts = $query->orderBy('cims_master_contacts.first_name')
+            ->orderBy('cims_master_contacts.last_name')
+            ->paginate(24);
+
+        // Client list for the filter dropdown
+        $clients = DB::table('client_master')
+            ->where('is_active', 1)
+            ->orderBy('company_name')
+            ->get(['client_id', 'client_code', 'company_name']);
+
+        $counts = $this->getFolderCounts();
+
+        return view('cims_email::emails.contacts', compact('contacts', 'search', 'clientFilter', 'showAll', 'clients', 'counts'));
+    }
+
+    /**
+     * Create new contact
+     */
+    public function storeContact(Request $request)
+    {
+        $request->validate([
+            'client_id' => 'required|integer',
+            'first_name' => 'required|string|max:100',
+            'last_name' => 'required|string|max:100',
+        ]);
+
+        $photoPath = null;
+        if ($request->hasFile('photo')) {
+            $file = $request->file('photo');
+            $filename = 'contact_' . Str::random(20) . '.' . $file->getClientOriginalExtension();
+            $storagePath = base_path('../storage/contact_photos');
+            if (!is_dir($storagePath)) {
+                mkdir($storagePath, 0755, true);
+            }
+            $file->move($storagePath, $filename);
+            $photoPath = $filename;
+        }
+
+        DB::table('cims_master_contacts')->insert([
+            'client_id' => $request->client_id,
+            'title' => $request->title ?? null,
+            'first_name' => $request->first_name,
+            'last_name' => $request->last_name,
+            'known_as' => $request->known_as ?? null,
+            'gender' => $request->gender ?? null,
+            'email' => $request->email ?? null,
+            'phone' => $request->phone ?? null,
+            'mobile' => $request->mobile ?? null,
+            'whatsapp' => $request->whatsapp ?? null,
+            'position' => $request->position ?? null,
+            'department' => $request->department ?? null,
+            'notes' => $request->notes ?? null,
+            'photo' => $photoPath,
+            'source' => 'manual',
+            'is_active' => 1,
+            'created_by' => Auth::id(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return redirect()->route('cimsemail.contacts')->with('success', 'Contact created successfully.');
+    }
+
+    /**
+     * Update existing contact
+     */
+    public function updateContact(Request $request, $id)
+    {
+        $contact = DB::table('cims_master_contacts')->where('id', $id)->first();
+        if (!$contact) {
+            return back()->with('error', 'Contact not found.');
+        }
+
+        $request->validate([
+            'client_id' => 'required|integer',
+            'first_name' => 'required|string|max:100',
+            'last_name' => 'required|string|max:100',
+        ]);
+
+        $data = [
+            'client_id' => $request->client_id,
+            'title' => $request->title ?? null,
+            'first_name' => $request->first_name,
+            'last_name' => $request->last_name,
+            'known_as' => $request->known_as ?? null,
+            'gender' => $request->gender ?? null,
+            'email' => $request->email ?? null,
+            'phone' => $request->phone ?? null,
+            'mobile' => $request->mobile ?? null,
+            'whatsapp' => $request->whatsapp ?? null,
+            'position' => $request->position ?? null,
+            'department' => $request->department ?? null,
+            'notes' => $request->notes ?? null,
+            'is_active' => $request->has('is_active') ? 1 : ($contact->is_active ?? 1),
+            'updated_at' => now(),
+        ];
+
+        // Handle photo upload if new one provided
+        if ($request->hasFile('photo')) {
+            $file = $request->file('photo');
+            $filename = 'contact_' . Str::random(20) . '.' . $file->getClientOriginalExtension();
+            $storagePath = base_path('../storage/contact_photos');
+            if (!is_dir($storagePath)) {
+                mkdir($storagePath, 0755, true);
+            }
+            $file->move($storagePath, $filename);
+            $data['photo'] = $filename;
+        }
+
+        DB::table('cims_master_contacts')->where('id', $id)->update($data);
+
+        return redirect()->route('cimsemail.contacts')->with('success', 'Contact updated successfully.');
+    }
+
+    /**
+     * Delete contact (soft delete - set is_active=0)
+     */
+    public function deleteContact($id)
+    {
+        $contact = DB::table('cims_master_contacts')->where('id', $id)->first();
+        if (!$contact) {
+            return back()->with('error', 'Contact not found.');
+        }
+
+        DB::table('cims_master_contacts')->where('id', $id)->update([
+            'is_active' => 0,
+            'updated_at' => now(),
+        ]);
+
+        return redirect()->route('cimsemail.contacts')->with('success', 'Contact deleted.');
+    }
+
+    /**
+     * Get single contact for edit modal (AJAX)
+     */
+    public function getContact($id)
+    {
+        $contact = DB::table('cims_master_contacts')
+            ->leftJoin('client_master', 'cims_master_contacts.client_id', '=', 'client_master.client_id')
+            ->where('cims_master_contacts.id', $id)
+            ->select(
+                'cims_master_contacts.*',
+                'client_master.company_name',
+                'client_master.client_code'
+            )
+            ->first();
+
+        if (!$contact) {
+            return response()->json(['error' => 'Contact not found'], 404);
+        }
+
+        return response()->json($contact);
+    }
+
+    /**
+     * Check for duplicate contact by email (AJAX)
+     */
+    public function checkDuplicateContact(Request $request)
+    {
+        $email = $request->input('email');
+        $clientId = $request->input('client_id');
+        $excludeId = $request->input('exclude_id'); // for edit mode
+
+        $warnings = [];
+
+        if (empty($email)) {
+            return response()->json(['warnings' => $warnings]);
+        }
+
+        // Check same client - same email
+        $sameClientQuery = DB::table('cims_master_contacts')
+            ->where('email', $email)
+            ->where('client_id', $clientId)
+            ->where('is_active', 1);
+
+        if ($excludeId) {
+            $sameClientQuery->where('id', '!=', $excludeId);
+        }
+
+        $sameClientMatch = $sameClientQuery->first();
+
+        if ($sameClientMatch) {
+            $warnings[] = [
+                'type' => 'same_client',
+                'message' => 'This email already exists for this client: ' . trim($sameClientMatch->first_name . ' ' . $sameClientMatch->last_name),
+            ];
+        }
+
+        // Check other clients - same email
+        $otherClientsQuery = DB::table('cims_master_contacts')
+            ->leftJoin('client_master', 'cims_master_contacts.client_id', '=', 'client_master.client_id')
+            ->where('cims_master_contacts.email', $email)
+            ->where('cims_master_contacts.is_active', 1);
+
+        if ($clientId) {
+            $otherClientsQuery->where('cims_master_contacts.client_id', '!=', $clientId);
+        }
+
+        if ($excludeId) {
+            $otherClientsQuery->where('cims_master_contacts.id', '!=', $excludeId);
+        }
+
+        $otherClientsMatches = $otherClientsQuery
+            ->select('cims_master_contacts.first_name', 'cims_master_contacts.last_name', 'client_master.company_name')
+            ->get();
+
+        foreach ($otherClientsMatches as $match) {
+            $warnings[] = [
+                'type' => 'cross_client',
+                'message' => 'This email also exists under ' . ($match->company_name ?? 'Unknown Client') . ': ' . trim($match->first_name . ' ' . $match->last_name),
+            ];
+        }
+
+        return response()->json(['warnings' => $warnings]);
     }
 }

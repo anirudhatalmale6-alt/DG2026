@@ -21,6 +21,9 @@
             <div class="intro-title d-flex justify-content-between mt-0">
                 <h5>Manage</h5>
             </div>
+            <a href="{{ route('cimsemail.contacts') }}" class="list-group-item {{ ($activePage ?? '') == 'contacts' ? 'active' : '' }}">
+                <span class="icon-info"><i class="fa fa-circle" aria-hidden="true"></i></span> Contacts
+            </a>
             <a href="{{ route('cimsemail.templates') }}" class="list-group-item {{ ($activePage ?? '') == 'templates' ? 'active' : '' }}">
                 <span class="icon-warning"><i class="fa fa-circle" aria-hidden="true"></i></span> Templates
             </a>
