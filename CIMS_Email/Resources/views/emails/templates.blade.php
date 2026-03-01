@@ -1,163 +1,113 @@
 @extends('layouts.default')
-
 @section('content')
+    <div class="container-fluid">
+        <div class="row page-titles">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="javascript:void(0)">Email</a></li>
+                <li class="breadcrumb-item active"><a href="javascript:void(0)">Templates</a></li>
+            </ol>
+        </div>
+        <!-- row -->
+        <div class="row">
+            <div class="col-lg-12">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-xl-3 col-xxl-4">
+                                @include('cims_email::emails.partials.sidebar', ['activePage' => 'templates'])
+                            </div>
+                            <div class="col-xl-9 col-xxl-8">
+                                <div>
+                                    <div class="d-flex align-items-center justify-content-between mb-4">
+                                        <h4 class="card-title mb-0"><i class="fas fa-file-code me-2 text-primary"></i>Email Templates</h4>
+                                        <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#templateModal" onclick="resetTemplateForm()">
+                                            <i class="fas fa-plus me-1"></i> New Template
+                                        </button>
+                                    </div>
 
-<style>
-.et-wrapper { max-width: 1000px; margin: 0 auto; padding: 20px; }
-.et-header {
-    background: linear-gradient(135deg, #0e6977 0%, #148f9f 100%);
-    padding: 16px 24px;
-    border-radius: 8px 8px 0 0;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-.et-header h2 { color: #fff; margin: 0; font-size: 18px; font-weight: 700; }
-.et-back { color: rgba(255,255,255,0.8); text-decoration: none; font-size: 13px; }
-.et-back:hover { color: #fff; }
-.et-body {
-    background: #fff;
-    border: 1px solid #e0e0e0;
-    border-top: none;
-    border-radius: 0 0 8px 8px;
-    padding: 24px;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-}
-.et-btn-new {
-    display: inline-flex;
-    align-items: center;
-    padding: 8px 20px;
-    background: linear-gradient(135deg, #d6006e, #e91e8c);
-    color: #fff;
-    border: none;
-    border-radius: 6px;
-    font-size: 13px;
-    font-weight: 700;
-    cursor: pointer;
-    margin-bottom: 20px;
-}
-.et-btn-new:hover { opacity: 0.9; }
-.et-btn-new i { margin-right: 6px; }
-
-/* Template cards */
-.et-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
-.et-card {
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-    overflow: hidden;
-    transition: all 0.2s;
-}
-.et-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08); transform: translateY(-2px); }
-.et-card-header {
-    background: #f8f9fa;
-    padding: 12px 16px;
-    border-bottom: 1px solid #e0e0e0;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-.et-card-name {
-    font-size: 14px;
-    font-weight: 700;
-    color: #1a3c4d;
-}
-.et-card-category {
-    font-size: 10px;
-    padding: 2px 8px;
-    background: #e6f7fa;
-    color: #148f9f;
-    border-radius: 10px;
-    font-weight: 600;
-    text-transform: uppercase;
-}
-.et-card-body {
-    padding: 14px 16px;
-}
-.et-card-subject {
-    font-size: 12px;
-    color: #666;
-    margin-bottom: 8px;
-}
-.et-card-subject strong { color: #333; }
-.et-card-preview {
-    font-size: 11px;
-    color: #999;
-    max-height: 60px;
-    overflow: hidden;
-    line-height: 1.4;
-}
-.et-card-actions {
-    padding: 10px 16px;
-    border-top: 1px solid #f0f0f0;
-    display: flex;
-    gap: 8px;
-}
-.et-card-actions .btn { font-size: 11px; padding: 4px 10px; }
-
-/* Modal overrides */
-.et-modal .modal-header {
-    background: linear-gradient(135deg, #0e6977, #148f9f);
-    color: #fff;
-}
-.et-modal .modal-header .btn-close { filter: brightness(0) invert(1); }
-.et-modal .modal-title { font-weight: 700; font-size: 16px; }
-</style>
-
-<link href="https://cdn.jsdelivr.net/npm/summernote@0.8.20/dist/summernote-bs5.min.css" rel="stylesheet">
-
-<div class="et-wrapper">
-
-    <div class="et-header">
-        <h2><i class="fas fa-file-code" style="margin-right:10px;"></i> Email Templates</h2>
-        <a href="{{ route('cimsemail.index') }}" class="et-back"><i class="fas fa-arrow-left" style="margin-right:4px;"></i> Back to Mail</a>
-    </div>
-
-    <div class="et-body">
-        <button type="button" class="et-btn-new" data-bs-toggle="modal" data-bs-target="#templateModal" onclick="resetTemplateForm()">
-            <i class="fas fa-plus"></i> New Template
-        </button>
-
-        <div class="et-grid">
-            @forelse($templates as $tpl)
-            <div class="et-card">
-                <div class="et-card-header">
-                    <div class="et-card-name">{{ $tpl->name }}</div>
-                    <div class="et-card-category">{{ $tpl->category }}</div>
-                </div>
-                <div class="et-card-body">
-                    <div class="et-card-subject"><strong>Subject:</strong> {{ $tpl->subject }}</div>
-                    <div class="et-card-preview">{{ Str::limit(strip_tags($tpl->body_html), 120) }}</div>
-                </div>
-                <div class="et-card-actions">
-                    <a href="{{ route('cimsemail.compose') }}?template_load={{ $tpl->id }}" class="btn btn-sm" style="background:#148f9f;color:#fff;">
-                        <i class="fas fa-pen"></i> Use
-                    </a>
-                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="editTemplate({{ json_encode($tpl) }})">
-                        <i class="fas fa-edit"></i> Edit
-                    </button>
-                    <form method="POST" action="{{ route('cimsemail.templates.delete', $tpl->id) }}" style="display:inline;" onsubmit="return confirm('Delete this template?')">
-                        @csrf
-                        @method('DELETE')
-                        <button type="submit" class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button>
-                    </form>
+                                    {{-- Templates Table (Fillow CMS style) --}}
+                                    <div class="filter cm-content-box box-primary">
+                                        <div class="content-title SlideToolHeader">
+                                            <div class="cpa">
+                                                <i class="fa-solid fa-envelope me-1"></i> Template List
+                                            </div>
+                                            <div class="tools">
+                                                <a href="javascript:void(0);" class="expand handle"><i class="fal fa-angle-down"></i></a>
+                                            </div>
+                                        </div>
+                                        <div class="cm-content-body form excerpt">
+                                            <div class="card-body pb-4">
+                                                <div class="table-responsive">
+                                                    <table class="table">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>#</th>
+                                                                <th>Name</th>
+                                                                <th>Category</th>
+                                                                <th>Subject</th>
+                                                                <th>Status</th>
+                                                                <th class="pe-4">Actions</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            @forelse($templates as $idx => $tpl)
+                                                            <tr>
+                                                                <td>{{ $idx + 1 }}</td>
+                                                                <td><strong>{{ $tpl->name }}</strong></td>
+                                                                <td><span class="badge badge-sm light badge-primary">{{ $tpl->category }}</span></td>
+                                                                <td>{{ Str::limit($tpl->subject, 40) }}</td>
+                                                                <td>
+                                                                    @if($tpl->is_active)
+                                                                        <span class="badge badge-success light">Active</span>
+                                                                    @else
+                                                                        <span class="badge badge-danger light">Inactive</span>
+                                                                    @endif
+                                                                </td>
+                                                                <td class="text-nowrap">
+                                                                    <a href="{{ route('cimsemail.compose') }}?template_load={{ $tpl->id }}" class="btn btn-primary btn-sm content-icon" data-bs-toggle="tooltip" data-bs-title="Use">
+                                                                        <i class="fa fa-paper-plane"></i>
+                                                                    </a>
+                                                                    <button type="button" class="btn btn-warning btn-sm content-icon" onclick="editTemplate({{ json_encode($tpl) }})" data-bs-toggle="tooltip" data-bs-title="Edit">
+                                                                        <i class="fa-solid fa-pen-to-square"></i>
+                                                                    </button>
+                                                                    <form method="POST" action="{{ route('cimsemail.templates.delete', $tpl->id) }}" style="display:inline;" onsubmit="return confirm('Delete this template?')">
+                                                                        @csrf
+                                                                        @method('DELETE')
+                                                                        <button type="submit" class="btn btn-danger btn-sm content-icon me-0" data-bs-toggle="tooltip" data-bs-title="Delete">
+                                                                            <i class="fa-solid fa-trash"></i>
+                                                                        </button>
+                                                                    </form>
+                                                                </td>
+                                                            </tr>
+                                                            @empty
+                                                            <tr>
+                                                                <td colspan="6" class="text-center py-4 text-muted">
+                                                                    <i class="fas fa-file-code" style="font-size:36px;color:#ddd;display:block;margin-bottom:10px;"></i>
+                                                                    No templates yet. Create your first email template!
+                                                                </td>
+                                                            </tr>
+                                                            @endforelse
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
-            @empty
-            <div style="grid-column:1/-1;text-align:center;padding:40px;color:#999;">
-                <i class="fas fa-file-code" style="font-size:36px;color:#ddd;margin-bottom:12px;display:block;"></i>
-                No templates yet. Create your first email template!
-            </div>
-            @endforelse
         </div>
     </div>
-</div>
 
 {{-- Template Modal --}}
-<div class="modal fade et-modal" id="templateModal" tabindex="-1">
+<div class="modal fade" id="templateModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="templateModalTitle"><i class="fas fa-file-code" style="margin-right:8px;"></i> New Template</h5>
+                <h5 class="modal-title" id="templateModalTitle"><i class="fas fa-file-code me-2"></i> New Template</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form method="POST" id="templateForm" action="{{ route('cimsemail.templates.store') }}">
@@ -166,11 +116,11 @@
                 <div class="modal-body">
                     <div class="row mb-3">
                         <div class="col-md-8">
-                            <label class="form-label" style="font-weight:600;color:#1a3c4d;">Template Name</label>
+                            <label class="form-label" style="font-weight:600;">Template Name</label>
                             <input type="text" name="name" id="tplName" class="form-control" required placeholder="e.g. Welcome Letter">
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label" style="font-weight:600;color:#1a3c4d;">Category</label>
+                            <label class="form-label" style="font-weight:600;">Category</label>
                             <select name="category" id="tplCategory" class="form-control">
                                 <option value="General">General</option>
                                 <option value="Compliance">Compliance</option>
@@ -181,21 +131,29 @@
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label" style="font-weight:600;color:#1a3c4d;">Subject Line</label>
+                        <label class="form-label" style="font-weight:600;">Subject Line</label>
                         <input type="text" name="subject" id="tplSubject" class="form-control" required placeholder="Email subject...">
                     </div>
                     <div class="mb-3">
-                        <label class="form-label" style="font-weight:600;color:#1a3c4d;">Body</label>
+                        <label class="form-label" style="font-weight:600;">Body</label>
                         <textarea name="body_html" id="tplBody"></textarea>
                     </div>
-                    <div class="p-2" style="background:#f8f9fa;border-radius:4px;font-size:11px;color:#888;">
-                        <strong>Merge Fields:</strong> {client_name}, {company_name}, {tax_number}, {user_name}, {month}, {year}
+                    <div class="new-scroll p-3" style="background:#f8f9fa;border-radius:6px;">
+                        <h6 class="mb-2" style="font-size:12px;font-weight:700;text-transform:uppercase;">Merge Fields (Placeholders)</h6>
+                        <div class="d-grid mb-2">
+                            <span style="font-size:11px;color:#666;"><strong>{client_name}</strong> - Client contact name</span>
+                            <span style="font-size:11px;color:#666;"><strong>{company_name}</strong> - Company / Trading name</span>
+                            <span style="font-size:11px;color:#666;"><strong>{tax_number}</strong> - Tax reference number</span>
+                            <span style="font-size:11px;color:#666;"><strong>{user_name}</strong> - Logged-in user name</span>
+                            <span style="font-size:11px;color:#666;"><strong>{month}</strong> - Current month</span>
+                            <span style="font-size:11px;color:#666;"><strong>{year}</strong> - Current year</span>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn" style="background:#148f9f;color:#fff;font-weight:600;">
-                        <i class="fas fa-save" style="margin-right:4px;"></i> Save Template
+                    <button type="button" class="btn btn-danger light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-1"></i> Save Template
                     </button>
                 </div>
             </form>
@@ -203,6 +161,9 @@
     </div>
 </div>
 
+<!-- Summernote CSS -->
+<link href="https://cdn.jsdelivr.net/npm/summernote@0.8.20/dist/summernote-bs5.min.css" rel="stylesheet">
+<!-- Summernote JS -->
 <script src="https://cdn.jsdelivr.net/npm/summernote@0.8.20/dist/summernote-bs5.min.js"></script>
 
 @push('scripts')
@@ -230,7 +191,7 @@ $('#templateModal').on('shown.bs.modal', function() {
 });
 
 function resetTemplateForm() {
-    document.getElementById('templateModalTitle').innerHTML = '<i class="fas fa-file-code" style="margin-right:8px;"></i> New Template';
+    document.getElementById('templateModalTitle').innerHTML = '<i class="fas fa-file-code me-2"></i> New Template';
     document.getElementById('templateForm').action = '{{ route("cimsemail.templates.store") }}';
     document.getElementById('templateMethodField').innerHTML = '';
     document.getElementById('tplName').value = '';
@@ -240,7 +201,7 @@ function resetTemplateForm() {
 }
 
 function editTemplate(tpl) {
-    document.getElementById('templateModalTitle').innerHTML = '<i class="fas fa-edit" style="margin-right:8px;"></i> Edit Template';
+    document.getElementById('templateModalTitle').innerHTML = '<i class="fas fa-edit me-2"></i> Edit Template';
     document.getElementById('templateForm').action = '{{ url("cims/email/templates") }}/' + tpl.id;
     document.getElementById('templateMethodField').innerHTML = '<input type="hidden" name="_method" value="PUT">';
     document.getElementById('tplName').value = tpl.name;
@@ -252,6 +213,22 @@ function editTemplate(tpl) {
     var modal = new bootstrap.Modal(document.getElementById('templateModal'));
     modal.show();
 }
+
+// Fillow SlideToolHeader toggle
+jQuery('.SlideToolHeader').on('click', function() {
+    var el = jQuery(this).hasClass('expand');
+    if (el) {
+        jQuery(this).removeClass('expand').addClass('collapse');
+        jQuery(this).parents('.cm-content-box').find('.cm-content-body').slideUp(300);
+    } else {
+        jQuery(this).removeClass('collapse').addClass('expand');
+        jQuery(this).parents('.cm-content-box').find('.cm-content-body').slideDown(300);
+    }
+});
+
+// Init tooltips
+var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+tooltipTriggerList.map(function(el) { return new bootstrap.Tooltip(el); });
 </script>
 @endpush
 

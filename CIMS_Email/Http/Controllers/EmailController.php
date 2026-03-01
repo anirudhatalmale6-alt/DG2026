@@ -7,11 +7,57 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 
 class EmailController extends Controller
 {
+    /**
+     * Boot SMTP settings from database on each request
+     */
+    public function __construct()
+    {
+        $this->middleware(function ($request, $next) {
+            $this->loadSmtpSettings();
+            return $next($request);
+        });
+    }
+
+    /**
+     * Load SMTP settings from DB and apply to mail config
+     */
+    private function loadSmtpSettings()
+    {
+        try {
+            $settings = DB::table('cims_email_settings')->pluck('setting_value', 'setting_key')->toArray();
+            if (!empty($settings['smtp_host'])) {
+                Config::set('mail.default', 'smtp');
+                Config::set('mail.mailers.smtp.host', $settings['smtp_host']);
+                Config::set('mail.mailers.smtp.port', $settings['smtp_port'] ?? 587);
+                Config::set('mail.mailers.smtp.encryption', $settings['smtp_encryption'] ?? 'tls');
+                Config::set('mail.mailers.smtp.username', $settings['smtp_username'] ?? '');
+                Config::set('mail.mailers.smtp.password', $settings['smtp_password'] ?? '');
+                Config::set('mail.from.address', $settings['from_email'] ?? $settings['smtp_username']);
+                Config::set('mail.from.name', $settings['from_name'] ?? 'SmartWeigh CIMS');
+            }
+        } catch (\Exception $e) {
+            // Table may not exist yet - silently continue
+        }
+    }
+
+    /**
+     * Get folder counts for sidebar
+     */
+    private function getFolderCounts()
+    {
+        return [
+            'sent' => DB::table('cims_emails')->where('user_id', Auth::id())->where('folder', 'sent')->whereNull('deleted_at')->count(),
+            'drafts' => DB::table('cims_emails')->where('user_id', Auth::id())->where('folder', 'drafts')->whereNull('deleted_at')->count(),
+            'trash' => DB::table('cims_emails')->where('user_id', Auth::id())->where('folder', 'trash')->whereNull('deleted_at')->count(),
+        ];
+    }
+
     /**
      * Email Dashboard - shows sent emails (default view)
      */
@@ -40,18 +86,12 @@ class EmailController extends Controller
 
         $emails = $query->orderByDesc('created_at')->paginate(20);
 
-        // Get clients for filter dropdown
         $clients = DB::table('client_master')
             ->where('is_active', 1)
             ->orderBy('company_name')
             ->get(['client_id', 'client_code', 'company_name']);
 
-        // Folder counts
-        $counts = [
-            'sent' => DB::table('cims_emails')->where('user_id', Auth::id())->where('folder', 'sent')->whereNull('deleted_at')->count(),
-            'drafts' => DB::table('cims_emails')->where('user_id', Auth::id())->where('folder', 'drafts')->whereNull('deleted_at')->count(),
-            'trash' => DB::table('cims_emails')->where('user_id', Auth::id())->where('folder', 'trash')->whereNull('deleted_at')->count(),
-        ];
+        $counts = $this->getFolderCounts();
 
         return view('cims_email::emails.index', compact('emails', 'folder', 'search', 'clients', 'clientFilter', 'counts'));
     }
@@ -72,7 +112,6 @@ class EmailController extends Controller
             ->orderBy('name')
             ->get();
 
-        // Check if editing a draft
         $draft = null;
         if ($request->has('draft_id')) {
             $draft = DB::table('cims_emails')
@@ -82,10 +121,15 @@ class EmailController extends Controller
                 ->first();
         }
 
-        // Pre-fill client if provided
         $selectedClientId = $request->get('client_id') ?? ($draft->client_id ?? null);
+        $counts = $this->getFolderCounts();
 
-        return view('cims_email::emails.compose', compact('clients', 'templates', 'draft', 'selectedClientId'));
+        // Get user's signature and disclaimer
+        $signature = $this->getUserSignature();
+        $signatureHtml = $this->buildSignatureHtml($signature);
+        $disclaimerHtml = $this->buildDisclaimerHtml($signature);
+
+        return view('cims_email::emails.compose', compact('clients', 'templates', 'draft', 'selectedClientId', 'counts', 'signatureHtml', 'disclaimerHtml'));
     }
 
     /**
@@ -104,21 +148,29 @@ class EmailController extends Controller
         $bccEmails = $request->bcc_emails ? array_map('trim', explode(',', $request->bcc_emails)) : [];
 
         $user = Auth::user();
-        $fromEmail = $request->from_email ?: ($user->email ?? config('mail.from.address', 'noreply@smartweigh.co.za'));
-        $fromName = ($user->first_name ?? '') . ' ' . ($user->last_name ?? '');
+        $fromEmail = config('mail.from.address', $user->email ?? 'noreply@smartweigh.co.za');
+        $fromName = config('mail.from.name', trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? '')) ?: 'SmartWeigh');
+
+        // Auto-append disclaimer to email body
+        $signature = $this->getUserSignature();
+        $disclaimerHtml = $this->buildDisclaimerHtml($signature);
+        $bodyHtml = $request->body_html;
+        if ($disclaimerHtml) {
+            $bodyHtml .= $disclaimerHtml;
+        }
 
         // Store the email record
         $emailId = DB::table('cims_emails')->insertGetId([
             'client_id' => $request->client_id ?: null,
             'user_id' => Auth::id(),
             'from_email' => $fromEmail,
-            'from_name' => trim($fromName) ?: 'SmartWeigh',
+            'from_name' => $fromName,
             'to_emails' => json_encode($toEmails),
             'cc_emails' => json_encode($ccEmails),
             'bcc_emails' => json_encode($bccEmails),
             'subject' => $request->subject,
-            'body_html' => $request->body_html,
-            'body_text' => strip_tags($request->body_html),
+            'body_html' => $bodyHtml,
+            'body_text' => strip_tags($bodyHtml),
             'status' => 'sending',
             'folder' => 'sent',
             'is_read' => 1,
@@ -150,8 +202,8 @@ class EmailController extends Controller
                 ->where('email_id', $emailId)
                 ->get();
 
-            Mail::html($request->body_html, function ($message) use ($toEmails, $ccEmails, $bccEmails, $fromEmail, $fromName, $request, $attachments) {
-                $message->from($fromEmail, trim($fromName) ?: 'SmartWeigh');
+            Mail::html($bodyHtml, function ($message) use ($toEmails, $ccEmails, $bccEmails, $fromEmail, $fromName, $request, $attachments) {
+                $message->from($fromEmail, $fromName);
                 $message->to($toEmails);
                 if (!empty($ccEmails)) $message->cc($ccEmails);
                 if (!empty($bccEmails)) $message->bcc($bccEmails);
@@ -171,7 +223,6 @@ class EmailController extends Controller
                 'updated_at' => now(),
             ]);
 
-            // If editing a draft, delete it
             if ($request->draft_id) {
                 DB::table('cims_emails')->where('id', $request->draft_id)->update([
                     'deleted_at' => now(),
@@ -257,21 +308,20 @@ class EmailController extends Controller
 
         if (!$email) abort(404);
 
-        // Mark as read
         DB::table('cims_emails')->where('id', $id)->update(['is_read' => 1]);
 
-        // Get attachments
         $attachments = DB::table('cims_email_attachments')
             ->where('email_id', $id)
             ->get();
 
-        // Get linked client
         $client = null;
         if ($email->client_id) {
             $client = DB::table('client_master')->where('client_id', $email->client_id)->first(['client_id', 'client_code', 'company_name']);
         }
 
-        return view('cims_email::emails.view', compact('email', 'attachments', 'client'));
+        $counts = $this->getFolderCounts();
+
+        return view('cims_email::emails.view', compact('email', 'attachments', 'client', 'counts'));
     }
 
     /**
@@ -310,7 +360,9 @@ class EmailController extends Controller
             ->orderBy('name')
             ->get();
 
-        return view('cims_email::emails.templates', compact('templates'));
+        $counts = $this->getFolderCounts();
+
+        return view('cims_email::emails.templates', compact('templates', 'counts'));
     }
 
     /**
@@ -397,5 +449,238 @@ class EmailController extends Controller
         }
 
         return response()->json($contacts);
+    }
+
+    /**
+     * SMTP Settings page
+     */
+    public function settings()
+    {
+        $settings = [];
+        try {
+            $settings = DB::table('cims_email_settings')->pluck('setting_value', 'setting_key')->toArray();
+        } catch (\Exception $e) {
+            // Table may not exist
+        }
+
+        $counts = $this->getFolderCounts();
+
+        return view('cims_email::emails.settings', compact('settings', 'counts'));
+    }
+
+    /**
+     * Save SMTP Settings
+     */
+    public function saveSettings(Request $request)
+    {
+        $request->validate([
+            'smtp_host' => 'required|string',
+            'smtp_port' => 'required|string',
+            'smtp_encryption' => 'nullable|string',
+            'smtp_username' => 'required|string',
+            'smtp_password' => 'required|string',
+            'from_email' => 'required|email',
+            'from_name' => 'required|string',
+        ]);
+
+        $keys = ['smtp_host', 'smtp_port', 'smtp_encryption', 'smtp_username', 'smtp_password', 'from_email', 'from_name'];
+
+        foreach ($keys as $key) {
+            DB::table('cims_email_settings')->updateOrInsert(
+                ['setting_key' => $key],
+                ['setting_value' => $request->input($key, ''), 'updated_at' => now()]
+            );
+        }
+
+        return redirect()->route('cimsemail.settings')->with('success', 'SMTP settings saved successfully!');
+    }
+
+    /**
+     * Test SMTP connection (AJAX)
+     */
+    public function testConnection(Request $request)
+    {
+        try {
+            // Temporarily configure SMTP
+            Config::set('mail.default', 'smtp');
+            Config::set('mail.mailers.smtp.host', $request->smtp_host);
+            Config::set('mail.mailers.smtp.port', $request->smtp_port);
+            Config::set('mail.mailers.smtp.encryption', $request->smtp_encryption ?: null);
+            Config::set('mail.mailers.smtp.username', $request->smtp_username);
+            Config::set('mail.mailers.smtp.password', $request->smtp_password);
+
+            // Purge the smtp mailer to force re-creation with new config
+            app('mail.manager')->purge('smtp');
+
+            $fromEmail = $request->from_email ?: $request->smtp_username;
+            $fromName = $request->from_name ?: 'SmartWeigh CIMS';
+
+            // Send a test email to the from address
+            Mail::raw('This is a test email from CIMS Email Module. If you receive this, your SMTP settings are working correctly!', function ($message) use ($fromEmail, $fromName) {
+                $message->from($fromEmail, $fromName);
+                $message->to($fromEmail);
+                $message->subject('CIMS Email - SMTP Test (' . now()->format('d M Y H:i') . ')');
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'SMTP connection successful! A test email was sent to ' . $fromEmail
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'SMTP connection failed: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    // =========================================================================
+    // EMAIL SIGNATURES (Per User)
+    // =========================================================================
+
+    /**
+     * Get current user's signature from DB
+     */
+    private function getUserSignature()
+    {
+        try {
+            return DB::table('cims_email_signatures')
+                ->where('user_id', Auth::id())
+                ->where('is_active', 1)
+                ->first();
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+
+    /**
+     * Build disclaimer HTML from signature record
+     */
+    private function buildDisclaimerHtml($signature)
+    {
+        if (!$signature || empty($signature->disclaimer_html)) return '';
+
+        $disclaimer = $signature->disclaimer_html;
+        return '<div style="margin-top:15px;padding:10px 12px;border-top:1px solid #ddd;font-size:10px;color:#888;line-height:1.5;background:#fafafa;border-radius:4px;">'
+            . nl2br(htmlspecialchars($disclaimer))
+            . '</div>';
+    }
+
+    /**
+     * Build signature HTML from signature record
+     */
+    private function buildSignatureHtml($signature)
+    {
+        if (!$signature) return '';
+
+        // If user has custom HTML, use that
+        if (!empty($signature->signature_html)) {
+            return $signature->signature_html;
+        }
+
+        // Auto-generate from fields
+        $name = $signature->full_name ?? '';
+        $title = $signature->designation ?? '';
+        $phone = $signature->phone ?? '';
+        $mobile = $signature->mobile ?? '';
+        $direct = $signature->direct_number ?? '';
+        $whatsapp = $signature->whatsapp ?? '';
+        $company = $signature->company_name ?? '';
+        $website = $signature->company_website ?? '';
+        $slogan = $signature->slogan ?? '';
+
+        if (empty($name)) return '';
+
+        $html = '<table cellpadding="0" cellspacing="0" style="font-family:Arial,sans-serif;font-size:13px;color:#333;border-collapse:collapse;width:100%;max-width:550px;">';
+        $html .= '<tr><td style="padding-bottom:8px;border-bottom:2px solid #6853E8;">';
+        $html .= '<strong style="font-size:15px;color:#1a1a2e;">' . htmlspecialchars($name) . '</strong>';
+        if ($title) $html .= '<br><span style="font-size:12px;color:#666;">' . htmlspecialchars($title) . '</span>';
+        $html .= '</td></tr>';
+
+        $html .= '<tr><td style="padding-top:8px;">';
+        $contactParts = [];
+        if ($phone) $contactParts[] = 'Tel: ' . htmlspecialchars($phone);
+        if ($direct) $contactParts[] = 'Direct: ' . htmlspecialchars($direct);
+        if ($mobile) $contactParts[] = 'Mobile: ' . htmlspecialchars($mobile);
+        if ($whatsapp) $contactParts[] = 'WhatsApp: ' . htmlspecialchars($whatsapp);
+        if (!empty($contactParts)) {
+            $html .= '<span style="font-size:12px;color:#555;">' . implode(' &nbsp;|&nbsp; ', $contactParts) . '</span><br>';
+        }
+        if ($company) {
+            $html .= '<strong style="font-size:12px;color:#1a1a2e;">' . htmlspecialchars($company) . '</strong>';
+            if ($website) {
+                $url = $website;
+                if (!preg_match('/^https?:\/\//', $url)) $url = 'https://' . $url;
+                $html .= ' | <a href="' . $url . '" style="font-size:12px;color:#6853E8;text-decoration:none;">' . htmlspecialchars($website) . '</a>';
+            }
+            $html .= '<br>';
+        }
+        if ($slogan) {
+            $html .= '<em style="font-size:11px;color:#6853E8;font-style:italic;">' . htmlspecialchars($slogan) . '</em><br>';
+        }
+        $html .= '</td></tr></table>';
+
+        return $html;
+    }
+
+    /**
+     * Signature editor page
+     */
+    public function signature()
+    {
+        $signature = $this->getUserSignature();
+        $counts = $this->getFolderCounts();
+
+        return view('cims_email::emails.signature', compact('signature', 'counts'));
+    }
+
+    /**
+     * Save signature
+     */
+    public function saveSignature(Request $request)
+    {
+        $request->validate([
+            'full_name' => 'required|string|max:200',
+            'designation' => 'required|string|max:200',
+        ]);
+
+        $data = [
+            'user_id' => Auth::id(),
+            'full_name' => $request->full_name,
+            'designation' => $request->designation,
+            'phone' => $request->phone ?? '',
+            'mobile' => $request->mobile ?? '',
+            'whatsapp' => $request->whatsapp ?? '',
+            'direct_number' => $request->direct_number ?? '',
+            'company_name' => $request->company_name ?? '',
+            'company_website' => $request->company_website ?? '',
+            'slogan' => $request->slogan ?? '',
+            'disclaimer_html' => $request->disclaimer_html ?? '',
+            'signature_html' => $request->signature_html ?? '',
+            'is_active' => 1,
+            'updated_at' => now(),
+        ];
+
+        $existing = DB::table('cims_email_signatures')->where('user_id', Auth::id())->first();
+
+        if ($existing) {
+            DB::table('cims_email_signatures')->where('id', $existing->id)->update($data);
+        } else {
+            $data['created_at'] = now();
+            DB::table('cims_email_signatures')->insert($data);
+        }
+
+        return redirect()->route('cimsemail.signature')->with('success', 'Email signature saved!');
+    }
+
+    /**
+     * Get signature HTML (AJAX - for compose page)
+     */
+    public function getSignatureHtml()
+    {
+        $signature = $this->getUserSignature();
+        $html = $this->buildSignatureHtml($signature);
+        return response()->json(['html' => $html]);
     }
 }
