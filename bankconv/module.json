@@ -1,0 +1,11 @@
+{
+    "name": "CIMS_BANKCONV",
+    "alias": "cims_bankconv",
+    "description": "CIMS Bank Statement Converter - PDF to QuickBooks CSV",
+    "keywords": ["bank", "statement", "converter", "fnb", "quickbooks", "csv"],
+    "priority": 0,
+    "providers": [
+        "Modules\\CIMS_BANKCONV\\Providers\\CIMSBANKCONVServiceProvider"
+    ],
+    "files": []
+}

@@ -1,0 +1,31 @@
+cd public_html/application/Modules/CIMS_PAYROLL
+
+# Models (5 new)
+put /var/lib/freelancer/projects/40170867/payroll/Models/PayrollPayRun.php Models/PayrollPayRun.php
+put /var/lib/freelancer/projects/40170867/payroll/Models/PayrollPayRunLine.php Models/PayrollPayRunLine.php
+put /var/lib/freelancer/projects/40170867/payroll/Models/PayrollPayRunLineItem.php Models/PayrollPayRunLineItem.php
+put /var/lib/freelancer/projects/40170867/payroll/Models/PayrollLoan.php Models/PayrollLoan.php
+put /var/lib/freelancer/projects/40170867/payroll/Models/PayrollLoanRepayment.php Models/PayrollLoanRepayment.php
+
+# Services directory
+mkdir Services
+put /var/lib/freelancer/projects/40170867/payroll/Services/PayRunCalculator.php Services/PayRunCalculator.php
+
+# Views - pay-runs directory
+mkdir Resources/views/payroll/pay-runs
+put /var/lib/freelancer/projects/40170867/payroll/Resources/views/payroll/pay-runs/index.blade.php Resources/views/payroll/pay-runs/index.blade.php
+put /var/lib/freelancer/projects/40170867/payroll/Resources/views/payroll/pay-runs/create.blade.php Resources/views/payroll/pay-runs/create.blade.php
+put /var/lib/freelancer/projects/40170867/payroll/Resources/views/payroll/pay-runs/show.blade.php Resources/views/payroll/pay-runs/show.blade.php
+
+# Views - loans directory
+mkdir Resources/views/payroll/loans
+put /var/lib/freelancer/projects/40170867/payroll/Resources/views/payroll/loans/index.blade.php Resources/views/payroll/loans/index.blade.php
+put /var/lib/freelancer/projects/40170867/payroll/Resources/views/payroll/loans/form.blade.php Resources/views/payroll/loans/form.blade.php
+
+# Updated controller with pay run + loan methods
+put /var/lib/freelancer/projects/40170867/payroll/Http/Controllers/PayrollController.php Http/Controllers/PayrollController.php
+
+# Updated routes
+put /var/lib/freelancer/projects/40170867/payroll/Routes/web.php Routes/web.php
+
+bye

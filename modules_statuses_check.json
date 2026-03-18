@@ -1,0 +1,17 @@
+{
+    "SmartDash": true,
+    "CIMSAddresses": true,
+    "CIMSPersons": true,
+    "CIMSClients": true,
+    "ClientMaster": false,
+    "CIMSClientMaster": true,
+    "CIMSDocuments": true,
+    "CIMSDocManager": true,
+    "CIMSDBForge": true,
+    "CIMSInfoDocs": true,
+    "SARSRepresentative": true,
+    "CimsSignature": true,
+    "CimsFingerprint": true,
+    "CIMSCore": true,
+    "CIMSDocumentGenerator": true
+}

@@ -1,0 +1,9 @@
+{
+    "name": "JobCards",
+    "alias": "jobcards",
+    "description": "Job Card Workflow Management System for CIMS",
+    "providers": [
+        "Modules\\JobCards\\Providers\\ModuleServiceProvider"
+    ],
+    "files": []
+}

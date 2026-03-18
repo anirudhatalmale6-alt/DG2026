@@ -55,9 +55,15 @@
                                                                 $toList = json_decode($email->to_emails, true) ?? [];
                                                                 $initials = strtoupper(substr($toList[0] ?? 'E', 0, 2));
                                                             @endphp
-                                                            <div class="me-3 rounded d-flex align-items-center justify-content-center" style="width:70px;height:70px;background:linear-gradient(135deg,var(--primary),#148f9f);color:#fff;font-weight:700;font-size:22px;border-radius:50% !important;">
-                                                                {{ $initials }}
-                                                            </div>
+                                                            @if(!empty($contactPhoto))
+                                                                <div class="me-3" style="width:70px;height:70px;border-radius:50%;overflow:hidden;flex-shrink:0;">
+                                                                    <img src="{{ $contactPhoto }}" alt="{{ $initials }}" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.outerHTML='<div class=\'me-3 rounded d-flex align-items-center justify-content-center\' style=\'width:70px;height:70px;background:linear-gradient(135deg,var(--primary),#148f9f);color:#fff;font-weight:700;font-size:22px;border-radius:50% !important;\'>{{ $initials }}</div>'">
+                                                                </div>
+                                                            @else
+                                                                <div class="me-3 rounded d-flex align-items-center justify-content-center" style="width:70px;height:70px;background:linear-gradient(135deg,var(--primary),#148f9f);color:#fff;font-weight:700;font-size:22px;border-radius:50% !important;">
+                                                                    {{ $initials }}
+                                                                </div>
+                                                            @endif
                                                             <div class="media-body me-2">
                                                                 <h5 class="text-primary mb-0 mt-1">{{ implode(', ', $toList) }}</h5>
                                                                 <p class="mb-0">

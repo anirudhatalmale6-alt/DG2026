@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en" class="logged-out  midnight" data-bs-theme="midnight">
+
+<!--html header-->
+<head>
+
+    <!--CRM COPYWRIGHT - GROWCRM.IO-->
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="weMKdiAHBIWCO49d5LMtOgoBegQauuinnC2ts9DV" id="meta-csrf" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+
+    <title>Accounting Taxation and Payroll (Pty) Ltd </title>
+
+    <!--BASEURL-->
+    <base href="https://www.smartweigh.co.za" target="_self">
+
+    <!--JQUERY & OTHER HEADER JS-->
+    <script src="public/vendor/js/vendor.header.js?v=2025-12-12"></script>
+
+    <!--BOOTSTRAP-->
+    <link href="public/vendor/css/bootstrap/bootstrap.min.css" rel="stylesheet">
+
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!--[if lt IE 9]>
+    <script src="public/vendor/js/html5shiv/html5shiv.js"></script>
+    <script src="public/vendor/js/respond/respond.min.js"></script>
+    <![endif]-->
+
+    <!--GOOGLE FONTS-->
+    <link href="https://fonts.googleapis.com/css?family=Montserrat:300,400,500,600,700" rel="stylesheet"
+        type="text/css">
+
+    <!--GOOGLE ROBOTO-->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
+
+    <!--VENDORS CSS-->
+    <link rel="stylesheet" href="/public/vendor/css/vendor.css?v=2025-12-12">
+    <link rel="stylesheet"
+        href="/public/vendor/js/bootstrap-timepicker/bootstrap-timepicker.css?v=2025-12-12">
+
+    <!--ICONS-->
+    <link rel="stylesheet" href="public/vendor/fonts/growcrm-icons/styles.css?v=2025-12-12">
+    <link rel="stylesheet"
+        href="/public/vendor/fonts/phosphor-icons/regular/style.css?v=2025-12-12">
+
+    <!--2025 - TABLER ICONS-->
+    <link rel="stylesheet"
+        href="/public/vendor/fonts/tabler-icons/tabler-icons.css?v=2025-12-12">
+
+    <!--2025 - LINEICONS ICONS-->
+    <link rel="stylesheet" href="/public/vendor/fonts/lineicons/css/icons.css?v=2025-12-12">
+
+    <!--DYNAMIC CSS VARS-->
+    <!-- This file must NOT be formatted -->
+<style>
+    :root {
+        --calendar-type-event-background: #24D2B5;
+
+        --calendar-type-project-background: #20AEE3;
+
+        --calendar-type-task-background: #6772E5;
+
+        --calendar-fc-daygrid-dot-event-background: #24D2B5;
+        
+        --calendar-fc-daygrid-dot-event-contrast: color-mix(in srgb, var(--calendar-fc-daygrid-dot-event-background) 70%, black);
+    }
+</style>
+
+
+    <!--THEME STYLE-->
+    <!--use the default theme for all external pages (e.g. proposals, cotracts etc) -->
+            <link href="public/themes/midnight/css/style.css?v=2025-12-12 " rel="stylesheet">
+        
+    <!--USERS CUSTON CSS FILE-->
+    <link href="public/css/custom.css?v=2025-12-12" rel="stylesheet">
+
+    <!--PRINTING CSS-->
+    <link href="public/css/print.css?v=2025-12-12" rel="stylesheet">
+
+    <!-- Favicon icon -->
+    <link rel="apple-touch-icon" sizes="57x57" href="public/images/favicon/apple-icon-57x57.png">
+    <link rel="apple-touch-icon" sizes="60x60" href="public/images/favicon/apple-icon-60x60.png">
+    <link rel="apple-touch-icon" sizes="72x72" href="public/images/favicon/apple-icon-72x72.png">
+    <link rel="apple-touch-icon" sizes="76x76" href="public/images/favicon/apple-icon-76x76.png">
+    <link rel="apple-touch-icon" sizes="114x114" href="public/images/favicon/apple-icon-114x114.png">
+    <link rel="apple-touch-icon" sizes="120x120" href="public/images/favicon/apple-icon-120x120.png">
+    <link rel="apple-touch-icon" sizes="144x144" href="public/images/favicon/apple-icon-144x144.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="public/images/favicon/apple-icon-152x152.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="public/images/favicon/apple-icon-180x180.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="public/images/favicon/android-icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="public/images/favicon/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="96x96" href="public/images/favicon/favicon-96x96.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="public/images/favicon/favicon-16x16.png">
+    <meta name="msapplication-TileColor" content="#ffffff">
+    <meta name="msapplication-TileImage" content="public/images/favicon/ms-icon-144x144.png">
+    <meta name="theme-color" content="#ffffff">
+
+    <!--module extension point-->
+    
+    <!--SET DYNAMIC VARIABLE IN JAVASCRIPT-->
+    <script type="text/javascript">
+        //name space & settings
+        NX = (typeof NX == 'undefined') ? {} : NX;
+        NXJS = (typeof NXJS == 'undefined') ? {} : NXJS;
+        NXLANG = (typeof NXLANG == 'undefined') ? {} : NXLANG;
+        NXINVOICE = (typeof NXINVOICE == 'undefined') ? {} : NXINVOICE;
+        NXDOC = (typeof NXDOC == 'undefined') ? {} : NXDOC;
+        NX.data = (typeof NX.data == 'undefined') ? {} : NX.data;
+
+        NXINVOICE.DATA = {};
+        NXINVOICE.DOM = {};
+        NXINVOICE.CALC = {};
+
+        //variables
+        NX.site_url = "https://www.smartweigh.co.za";
+        NX.system_type = "tenant"; //landlord/tenant/frontend
+        NX.site_page_title = "Accounting Taxation and Payroll (Pty) Ltd ";
+        NX.csrf_token = "weMKdiAHBIWCO49d5LMtOgoBegQauuinnC2ts9DV";
+        NX.system_language = "english";
+        NX.date_format = "d-m-Y";
+        NX.date_picker_format = "dd-mm-yyyy";
+        NX.date_moment_format = "DD-MM-YYYY";
+        NX.upload_maximum_file_size = "5000";
+        NX.settings_system_currency_symbol = "R";
+        NX.settings_system_decimal_separator =
+            ".";
+        NX.settings_system_thousand_separator =
+            " ";
+        NX.settings_system_currency_position = "left";
+        NX.show_action_button_tooltips = "1";
+        NX.notification_position = "bottomLeft";
+        NX.notification_error_duration = "5000";
+        NX.notification_success_duration = "3000";
+        NX.session_login_popup = "enabled";
+
+
+        //javascript console debug modes
+        NX.debug_javascript = "";
+
+        //popover template
+        NX.basic_popover_template = '<div class="popover card-popover" role="tooltip">' +
+            '<span class="popover-close" onclick="$(this).closest(\'div.popover\').popover(\'hide\');" aria-hidden="true">' +
+            '<i class="ti-close"></i></span>' +
+            '<div class="popover-header"></div><div class="popover-body" id="popover-body"></div></div>';
+
+        //lang - used in .js files
+        NXLANG.delete_confirmation = "Delete Confirmation";
+        NXLANG.are_you_sure_delete = "Are you sure you want to delete this item?";
+        NXLANG.cancel = "Cancel";
+        NXLANG.continue = "Continue";
+        NXLANG.file_too_big = "File is too big";
+        NXLANG.maximum = "Maximum";
+        NXLANG.generic_error = "An error was encountered processing your request";
+        NXLANG.drag_drop_not_supported = "Your browser does not support drag and drop";
+        NXLANG.use_the_button_to_upload = "Use the button to upload";
+        NXLANG.file_type_not_allowed = "File type is not allowed";
+        NXLANG.cancel_upload = "Cancel upload";
+        NXLANG.remove_file = "Remove file";
+        NXLANG.maximum_upload_files_reached = "Maximum allowed files has been reached";
+        NXLANG.upload_maximum_file_size = "lang.upload_maximum_file_size";
+        NXLANG.upload_canceled = "Upload cancelled";
+        NXLANG.are_you_sure = "Are you sure?";
+        NXLANG.image_dimensions_not_allowed = "Images dimensions are not allowed";
+        NXLANG.ok = "Ok";
+        NXLANG.cancel = "Cancel";
+        NXLANG.close = "Close";
+        NXLANG.system_default_category_cannot_be_deleted =
+            "This is a system default category and cannot be deleted";
+        NXLANG.default_category = "Default Catagory";
+        NXLANG.select_atleast_one_item = "You must select at least one item";
+        NXLANG.invalid_discount = "The discount is not valid";
+        NXLANG.add_lineitem_items_first = "First add invoice products";
+        NXLANG.fixed = "Fixed";
+        NXLANG.percentage = "Percentage";
+        NXLANG.action_not_completed_errors_found = "The request could not be completed";
+        NXLANG.selected_expense_is_already_on_invoice =
+            "One of the selected expenses is already on the invoice";
+        NXLANG.please_wait = "Please wait...";
+        NXLANG.invoice_time_unit = "Time";
+        NXLANG.dimensions_default_unit = "m2"
+        NXLANG.tax = "Tax";
+        NXLANG.invoice_mode = "Invoice Mode";
+        NXLANG.url_copied_to_clipboard = "URL copied to clipboard";
+        NXLANG.copied = "Copied!";
+
+        //arrays to use generically
+        NX.array_1 = [];
+        NX.array_2 = [];
+        NX.array_3 = [];
+        NX.array_4 = [];
+    </script>
+
+    <!--module extension point-->
+    
+    <!--boot js-->
+    <script src="public/js/core/head.js?v=2025-12-12"></script>
+
+    <!--stripe payments js-->
+    
+    <!--razorpay payments js-->
+    
+    <!--tap payments js-->
+    
+    <!--DYANMIC TRUSTED CONTENT - No sanitizing required] for this trusted content (Google reCAPTCHA)-->
+    
+    <!--code mirror (css editor)-->
+    <link rel="stylesheet" href="/public/js/codemirror/codemirror.min.css?v=2025-12-12">
+    <link rel="stylesheet" href="/public/js/codemirror/darcula.min.css?v=2025-12-12">
+
+    <!--[modules] css includes-->
+    
+
+    <!--dynamic css - custom user css-->
+    <style></style>
+
+    <!--module extension point-->
+    
+    <!--DYANMIC TRUSTED CONTENT - No sanitizing required] for this trusted content (Admin Custom HTML & JS header code)-->
+    
+
+    <!--module extension point-->
+    </head><!--html header-->
+
+<body class="">
+    <!--preloader-->
+        <div class="preloader">
+        <div class="loader">
+            <div class="loader-loading"></div>
+        </div>
+    </div>
+        <!--preloader-->
+
+    <!--main content-->
+    <div id="main-wrapper">
+        <!--signup-->
+<div class="login-logo m-t-30 p-b-5">
+    <a href="javascript:void(0)" class="text-center db">
+        <img src="https://www.smartweigh.co.za/storage/logos/app/logo.png?v=2025-12-12 15:03:04" alt="Home">
+    </a>
+</div>
+
+<div class="login-box m-t-20">
+    <form class="form-horizontal form-material" id="loginForm">
+        <div class="title">
+            <h4 class="box-title m-t-10 text-center">Sign in to your account</h4>
+            <div class="text-center  m-b-20 ">
+            </div>
+        </div>
+        <div class="form-group">
+            <div class="col-xs-12">
+                <input class="form-control" type="text" name="email" id="email"
+                    placeholder="Email">
+            </div>
+        </div>
+        <div class="form-group">
+            <div class="col-xs-12">
+                <input class="form-control" type="password" name="password" id="password"
+                    placeholder="Password">
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="custom-control custom-checkbox cursor-pointer">
+                <input type="checkbox" class="custom-control-input" name="remember_me" checked="checked">
+                <span class="custom-control-indicator"></span>
+                <span class="custom-control-description">Remember me</span>
+            </label>
+        </div>
+        <div class="form-group row p-t-10 p-b-10">
+            <div class="col-md-12">
+                <a href="https://www.smartweigh.co.za/forgotpassword" id="to-recover" class="text-dark pull-right js-toggle-login-forms"
+                    data-target="login-forms-forgot">
+                    <i class="fa fa-lock m-r-5"></i> Forgot Password</a>
+            </div>
+        </div>
+
+        <!--DYANMIC TRUSTED CONTENT - No sanitizing required] for this trusted content (Google reCAPTCHA)-->
+        
+        <div class="form-group text-center p-b-10">
+            <div class="col-xs-12">
+                <button class="btn btn-info btn-lg btn-block" id="loginSubmitButton"
+                    data-button-loading-annimation="yes" data-button-disable-on-click="yes"
+                    data-url="https://www.smartweigh.co.za/login?action=initial&amp;redirect_url="
+                    data-ajax-type="POST" type="submit">Continue</button>
+            </div>
+        </div>
+                <div class="form-group m-b-0">
+            <div class="col-sm-12 text-center">
+                Don&#039;t have an account?
+                <a href="https://www.smartweigh.co.za/signup" class="text-info m-l-5 js-toggle-login-forms"
+                    data-target="login-forms-signup">
+                    <b>Sign Up</b>
+                </a>
+                </p>
+            </div>
+        </div>
+            </form>
+</div>
+
+<div class="login-background">
+    <div class="x-left">
+        <img src="https://www.smartweigh.co.za/public/images/login-1.png" class="login-images" />
+    </div>
+    <div class="x-right hidden">
+        <img src="https://www.smartweigh.co.za/public/images/login-2.png" alt="404 - Not found" />
+    </div>
+</div>
+<!--signup-->
+    </div>
+
+    <!--common modals-->
+    <!--modal-->
+<div class="modal actions-modal" role="dialog" aria-labelledby="foo" id="actionsModal" data-keyboard="false" data-backdrop="static">
+    <div class="modal-dialog">
+        <form action="" method="post" id="actionsModalForm" class="form-horizontal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title" id="actionsModalTitle"></h4>
+                    <button type="button" class="close" data-dismiss="modal">
+                        <i class="ti-close"></i>
+                    </button>
+                </div>
+                <div class="modal-body" id="actionsModalBody">
+                    <!--dynamic content here-->
+
+                </div>
+                <div class="modal-footer" id="actionsModalFooter">
+                    <button type="button" class="btn btn-rounded-x btn-secondary waves-effect text-left" data-dismiss="modal">Close</button>
+                    <button type="submit" id="actionsModalButton" class="btn btn-rounded-x btn-danger waves-effect text-left js-ajax-ux-request" 
+                            data-url=""
+                            data-loading-target="actionsModalBody"
+                            data-ajax-type=""
+                            data-on-start-submit-button="disable">Submit</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!--notes: see events.js for deails-->    <!--modal-->
+<div class="modal" role="dialog" aria-labelledby="foo" id="commonModal" data-keyboard="false" data-backdrop="static">
+    <div class="modal-dialog" id="commonModalContainer">
+        <form action="" method="post" id="commonModalForm" class="form-horizontal">
+            <div class="modal-content">
+                <div class="modal-header" id="commonModalHeader">
+                    <h4 class="modal-title" id="commonModalTitle"></h4>
+                    <button type="button" class="close" data-dismiss="modal"
+                        id="commonModalCloseIcon">
+                        <i class="ti-close"></i>
+                    </button>
+                </div>
+                <!--optional button for when header is hidden-->
+                <span class="close x-extra-close-icon" data-dismiss="modal"
+                    id="commonModalExtraCloseIcon">
+                    <i class="ti-close"></i>
+                </span>
+                <div class="modal-body min-h-200" id="commonModalBody">
+                    <!--dynamic content here-->
+                </div>
+                <div class="modal-footer" id="commonModalFooter">
+                    <button type="button" id="commonModalCloseButton" class="btn btn-rounded-x btn-secondary waves-effect text-left" data-dismiss="modal">Close</button>
+                    <button type="submit" id="commonModalSubmitButton"
+                        class="btn btn-rounded-x btn-danger waves-effect text-left commonModalSubmitButton" data-url="" data-loading-target=""
+                        data-ajax-type="POST" data-on-start-submit-button="disable">Submit</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+<!--notes: see events.js for deails--></body>
+
+<!--module extension point-->
+
+<!--ALL THIRD PART JAVASCRIPTS-->
+<script src="public/vendor/js/vendor.footer.js?v=2025-12-12"></script>
+
+
+<!--nextloop.core.js-->
+<script src="/public/js/core/ajax.js?v=2025-12-12"></script>
+
+<!--MAIN JS - AT END-->
+<script src="public/js/core/boot.js?v=2025-12-12"></script>
+
+<!--EVENTS-->
+<script src="/public/js/core/events.js?v=2025-12-12"></script>
+
+<!--CORE-->
+<script src="/public/js/core/app.js?v=2025-12-12"></script>
+
+<!--module extension point-->
+
+<!--SEARCH-->
+<script src="/public/js/core/search.js?v=2025-12-12"></script>
+
+<!--BILLING-->
+<script src="/public/js/core/billing.js?v=2025-12-12"></script>
+
+<!--project page charts-->
+
+<!--form builder-->
+
+<!--export js (https://github.com/hhurz/tableExport.jquery.plugin)-->
+<script src="public/js/core/export.js?v=2025-12-12"></script>
+<script type="text/javascript"
+    src="public/vendor/js/exportjs/libs/FileSaver/FileSaver.min.js?v=2025-12-12"></script>
+<script type="text/javascript"
+    src="public/vendor/js/exportjs/libs/js-xlsx/xlsx.core.min.js?v=2025-12-12"></script>
+<script type="text/javascript" src="public/vendor/js/exportjs/tableExport.min.js?v=2025-12-12">
+</script>
+
+<!--printing-->
+<script type="text/javascript" src="public/vendor/js/printthis/printthis.js?v=2025-12-12">
+</script>
+
+<!--table sorter-->
+<script type="text/javascript"
+    src="public/vendor/js/tablesorter/js/jquery.tablesorter.min.js?v=2025-12-12"></script>
+
+<!--bootstrap-timepicker-->
+<script type="text/javascript"
+    src="/public/vendor/js/bootstrap-timepicker/bootstrap-timepicker.js?v=2025-12-12">
+</script>
+
+<!--code mirror - css editor-->
+<script type="text/javascript" src="/public/js/codemirror/codemirror.min.js?v=2025-12-12">
+</script>
+<script type="text/javascript" src="/public/js/codemirror/css.min.js?v=2025-12-12"></script>
+
+
+<!--calendaerfull js [v6.1.13]-->
+<script src="/public/vendor/js/fullcalendar/index.global.min.js?v=2025-12-12"></script>
+<!--IMPORTANT NOTES (June 2024) - any new JS libraries added here that are booted/initiated in boot.js should also be added to the landlord footerjs.blade.js, for saas-->
+
+<!--[modules] js includes-->
+
+
+<!--module extension point-->
+<!--js automations-->
+<!--flash messages-->
+
+<!--flash messages longer duration-->
+
+
+<!--force user password change-->
+
+<!--polling - general data [only when debug mode is disabled, else it resets the debug toolbar]-->
+
+
+
+<!--poll timers (every 60 seconds)-->
+
+<!--dynamic load - a expense-->
+
+
+<!--updates - updating modals-->
+<!--[note: no sanitizing required] for this trusted content, which is added by the admin-->
+
+
+<!--[PRINTING]-->
+
+</html>

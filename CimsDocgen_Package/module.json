@@ -1,0 +1,11 @@
+{
+    "name": "CimsDocgen",
+    "alias": "cimsdocgen",
+    "description": "Document Generator module - generate PDF documents from templates with client data overlay",
+    "keywords": ["document", "generator", "pdf", "template"],
+    "priority": 0,
+    "providers": [
+        "Modules\\CimsDocgen\\Providers\\CimsDocgenServiceProvider"
+    ],
+    "files": []
+}

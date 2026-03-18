@@ -1,0 +1,11 @@
+{
+    "name": "CIMS_EMP201",
+    "alias": "cims_emp201",
+    "description": "EMP201 Monthly Payroll Return Compliance Module - SARS South Africa",
+    "keywords": ["emp201", "sars", "payroll", "paye", "sdl", "uif", "compliance"],
+    "priority": 0,
+    "providers": [
+        "Modules\\CIMS_EMP201\\Providers\\CIMSEMP201ServiceProvider"
+    ],
+    "files": []
+}

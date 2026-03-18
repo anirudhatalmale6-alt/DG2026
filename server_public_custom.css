@@ -1,0 +1,61 @@
+/* ================================================
+   INLINE INVOICE DISCOUNTS - Custom Styles
+   ================================================ */
+
+/* Discount column styling */
+.bill_col_discount {
+    min-width: 150px;
+}
+
+.bill_col_discount .input-group-append {
+    width: 60px;
+}
+
+.bill_col_discount .js_item_discount_type {
+    font-size: 12px;
+    padding: 0.25rem;
+}
+
+/* Hide discount column when needed */
+.bill_col_discount.hidden {
+    display: none !important;
+}
+
+/* Disabled button styling */
+button.disabled,
+a.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+/* Currency spacing fix */
+.currency,
+.money,
+.amount,
+[data-type="money"] {
+    white-space: nowrap;
+}
+
+/* Add space between currency and amount */
+.currency::after {
+    content: " ";
+}
+
+/* Right-align all monetary columns */
+td.amount,
+td.money,
+.text-money,
+.text-amount {
+    text-align: right !important;
+    font-variant-numeric: tabular-nums;
+}
+/* Global money alignment */
+.text-money,
+.money,
+.amount,
+td.amount,
+td.money {
+    text-align: right !important;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}

@@ -1,0 +1,11 @@
+{
+    "name": "CIMSTyreDash",
+    "alias": "cimstyredash",
+    "description": "CIMS TyreDash - Tyre Management, POS & Quoting System",
+    "keywords": ["tyre", "pos", "quote", "inventory", "workshop"],
+    "priority": 0,
+    "providers": [
+        "Modules\\CIMSTyreDash\\Providers\\CIMSTyreDashServiceProvider"
+    ],
+    "files": []
+}

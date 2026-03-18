@@ -82,7 +82,7 @@
                                                                 <td>{{ $idx + 1 }}</td>
                                                                 <td><strong>{{ $tpl->name }}</strong></td>
                                                                 <td><span class="badge badge-sm light badge-primary">{{ $tpl->category }}</span></td>
-                                                                <td>{{ Str::limit($tpl->subject, 40) }}</td>
+                                                                <td>{{ \Illuminate\Support\Str::limit($tpl->subject, 40) }}</td>
                                                                 <td>
                                                                     @if($tpl->is_active)
                                                                         <span class="badge badge-success light">Active</span>
@@ -185,6 +185,7 @@
                                 <span class="var-btn" onclick="insertVar('{company_name}')">{company_name}</span>
                                 <span class="var-btn" onclick="insertVar('{trading_name}')">{trading_name}</span>
                                 <span class="var-btn" onclick="insertVar('{tax_number}')">{tax_number}</span>
+                                <span class="var-btn" onclick="insertVar('{client_address}')">{client_address}</span>
                             </div>
                             <div class="mt-1">
                                 <strong style="font-size:10px;color:#25D366;text-transform:uppercase;">Sender:</strong>

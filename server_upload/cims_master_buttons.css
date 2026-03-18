@@ -1,0 +1,18 @@
+/* ===============================
+   CIMS MASTER BUTTONS
+   Central button styles for the entire CIMS system.
+   Location: CIMSCore/Resources/assets/css/cims_master_buttons.css
+=============================== */
+
+/* ===============================
+   CLOSE BUTTON
+   Component: x-close-button
+   Base: btn btn-pink
+   Icon: fa-solid fa-circle-left
+=============================== */
+.cims-close-button {
+    padding: 10px 40px !important;
+    font-size: 24px !important;
+    margin: 10px 10px !important;
+    display: inline !important;
+}

@@ -1,0 +1,2194 @@
+/* ============================================
+   SMARTDASH GLOBAL TYPOGRAPHY & FORM STYLES
+   Consistent fonts, sizes, and colors across all SmartDash forms
+
+   Usage: Include in layout head
+   <link href="/public/smartdash/css/smartdash-forms.css" rel="stylesheet">
+   ============================================ */
+
+/* ============================================
+   CSS VARIABLES - GLOBAL DEFAULTS
+   Change these values to update all forms
+   ============================================ */
+:root {
+    /* Primary Colors - Teal Theme */
+    --sd-primary: #17A2B8;
+    --sd-primary-dark: #0d3d56;
+    --sd-primary-light: #1496bb;
+    --sd-danger: #FC2E53;
+    --sd-success: #28a745;
+    --sd-warning: #ffc107;
+
+    /* Text Colors */
+    --sd-text-dark: #333333;
+    --sd-text-medium: #666666;
+    --sd-text-light: #999999;
+    --sd-text-white: #ffffff;
+
+    /* Font Family */
+    --sd-font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+    /* Font Sizes - GLOBAL SETTINGS */
+    --sd-font-size-xs: 14px;      /* Extra small - hints, tiny labels */
+    --sd-font-size-sm: 16px;      /* Small - form labels */
+    --sd-font-size-base: 18px;    /* Base - body text, table cells */
+    --sd-font-size-md: 20px;      /* Medium - form inputs (MAIN FIELD SIZE) */
+    --sd-font-size-lg: 20px;      /* Large - buttons, important text */
+    --sd-font-size-xl: 22px;      /* Extra large - section titles */
+    --sd-font-size-2xl: 24px;     /* 2X large - card headers */
+    --sd-font-size-3xl: 28px;     /* 3X large - page titles */
+
+    /* Font Weights */
+    --sd-font-weight-normal: 400;
+    --sd-font-weight-medium: 500;
+    --sd-font-weight-semibold: 600;
+    --sd-font-weight-bold: 700;
+
+    /* Form Input Heights */
+    --sd-input-height-sm: 40px;
+    --sd-input-height: 48px;
+    --sd-input-height-lg: 56px;
+
+    /* Border Radius */
+    --sd-border-radius-sm: 4px;
+    --sd-border-radius: 8px;
+    --sd-border-radius-lg: 12px;
+
+    /* Spacing */
+    --sd-spacing-xs: 4px;
+    --sd-spacing-sm: 8px;
+    --sd-spacing-md: 12px;
+    --sd-spacing-lg: 16px;
+    --sd-spacing-xl: 24px;
+}
+
+/* ============================================
+   GLOBAL FORM LABEL STYLES
+   Consistent labels across all forms
+   ============================================ */
+.smartdash-form-card label,
+.smartdash-form-card .form-label {
+    font-family: var(--sd-font-family) !important;
+    font-size: var(--sd-font-size-sm) !important;
+    font-weight: var(--sd-font-weight-semibold) !important;
+    color: var(--sd-primary-dark) !important;
+    text-transform: capitalize !important;
+    margin-bottom: var(--sd-spacing-xs) !important;
+    letter-spacing: 0.3px;
+    display: block;
+}
+
+/* ============================================
+   GLOBAL FORM INPUT STYLES
+   Consistent inputs across all forms
+   ============================================ */
+.smartdash-form-card .form-control,
+.smartdash-form-card .form-select,
+.smartdash-form-card input[type="text"],
+.smartdash-form-card input[type="email"],
+.smartdash-form-card input[type="tel"],
+.smartdash-form-card input[type="number"],
+.smartdash-form-card input[type="date"],
+.smartdash-form-card input[type="password"],
+.smartdash-form-card select,
+.smartdash-form-card textarea {
+    font-family: var(--sd-font-family) !important;
+    font-size: var(--sd-font-size-md) !important;
+    font-weight: var(--sd-font-weight-normal);
+    color: var(--sd-text-dark) !important;
+    border: 2px solid var(--sd-primary) !important;
+    border-radius: var(--sd-border-radius) !important;
+    padding: var(--sd-spacing-sm) var(--sd-spacing-md);
+    min-height: var(--sd-input-height);
+    transition: all 0.2s ease;
+}
+
+.smartdash-form-card .form-control:focus,
+.smartdash-form-card .form-select:focus,
+.smartdash-form-card input:focus,
+.smartdash-form-card select:focus,
+.smartdash-form-card textarea:focus {
+    border-color: var(--sd-primary-dark) !important;
+    box-shadow: 0 0 0 3px rgba(23, 162, 184, 0.15) !important;
+    outline: none !important;
+}
+
+.smartdash-form-card .form-control::placeholder {
+    color: var(--sd-text-light);
+    font-size: var(--sd-font-size-base);
+}
+
+/* Read-only inputs */
+.smartdash-form-card .form-control[readonly] {
+    background-color: #f8f9fa;
+    color: var(--sd-text-medium);
+}
+
+/* Info Docs - Styles from Perfex CRM */
+
+/* Nav and Tabs */
+.info-docs-tab-wrapper .info-docs-nav-link {
+    padding: 14px 16px;
+    font-size: 14px;
+    border-radius: 10px 10px 0 0 !important;
+    margin-right: 3px;
+    transition-duration: .25s;
+    cursor: pointer;
+}
+
+.info-docs-tab-wrapper .info-docs-nav-link.active {
+    border-color: #ccc #ccc #fff !important;
+}
+
+.info-docs-tab-wrapper .info-docs-nav-link:hover {
+    border-color: #ccc #ccc #fff !important;
+}
+
+.info-docs-tab-wrapper .info-docs-tab-content {
+    background-color: #fff;
+    border: 1px solid #ccc;
+    border-radius: 0 5px 5px;
+    min-height: 600px;
+    padding: 15px;
+    border-top: none;
+}
+
+.info-docs-tab-wrapper .info-docs-nav-tabs {
+    border-color: #ccc;
+}
+
+/* Company summary column */
+.info-docs-tab-wrapper .company-summary {
+    margin: 15px 0 30px;
+}
+
+.info-docs-tab-wrapper .company-summary h3 {
+    font-size: 18px;
+    font-weight: 700;
+    margin-top: 8px;
+}
+
+.info-docs-tab-wrapper .company-summary h4 {
+    font-size: 18px;
+    font-weight: 700;
+    margin-top: 8px;
+}
+
+.info-docs-tab-wrapper .company-summary ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.info-docs-tab-wrapper .company-summary ul li {
+    padding-top: 10px;
+    border-top: 1px solid #ccc;
+}
+
+.info-docs-tab-wrapper .company-summary ul li p {
+    line-height: 1.4;
+    font-size: 14px;
+    color: #333;
+}
+
+/* Table styles for dashboard center */
+#documents-table th,
+#documents-table td {
+    padding: 4px 8px;
+    word-wrap: break-word;
+}
+
+/* Company Dashboard Starts */
+.info-docs-tab-wrapper .info-docs-subnav-tabs {
+    margin: 15px 0 30px;
+}
+
+.info-docs-tab-wrapper .info-docs-subnav-tabs .info-docs-tab-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.info-docs-tab-wrapper .info-docs-subnav-tabs .info-docs-tab-item {
+    border-top: none;
+    border-bottom: 1px solid #ccc;
+}
+
+.info-docs-tab-wrapper .info-docs-subnav-tabs .info-docs-tab-item a {
+    color: #000;
+    display: block;
+    padding: 3px 10px;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.info-docs-tab-wrapper .info-docs-subnav-tabs .info-docs-tab-item a:hover {
+    background-color: #f26d21;
+    color: #fff;
+}
+
+.info-docs-tab-wrapper .info-docs-subnav-tabs .info-docs-tab-item a.active {
+    background-color: #1496bb;
+    color: #fff;
+}
+
+/* Table Buttons */
+.table-icon-style {
+    color: #337ab7;
+    font-size: 18px;
+}
+
+/* Documents table */
+#documents-table {
+    table-layout: fixed;
+}
+
+#documents-table th,
+#documents-table td {
+    white-space: normal !important;
+    overflow-wrap: break-word;
+}
+
+/* DataTable Css End */
+.h3_class {
+    color: blue;
+    font-weight: 500 !important;
+}
+
+.info-docs-bg {
+    background: #0d3d56 !important;
+}
+
+/* Director Appointer Css */
+.form-modal .modal-header {
+    color: #fff;
+    background-color: #0d3d56;
+    border-radius: 10px 10px 0 0;
+    border-color: #0d3d56;
+    padding: 15px;
+    border-bottom: 1px solid #e5e5e5;
+}
+
+.form-modal .modal-title {
+    color: #fff
+}
+
+.form-modal .modal-content {
+    border-radius: 15px;
+    color: #000;
+}
+
+.info_docs-form .form-control {
+    color: #000;
+    border-color: #000;
+    height: 40px;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.375rem !important;
+}
+
+.info_docs-form .checkbox-label {
+    display: flex;
+    align-items: center;
+    color: #000000 !important;
+    gap: 3px;
+}
+
+.info_docs-form .form-check-input {
+    border-color: #000;
+}
+
+.bg-red {
+    background-color: #FC2E53 !important;
+}
+
+.swal2-container {
+    z-index: 99999 !important;
+}
+
+.breadcrumb-item::before {
+    font-size: 30px
+}
+
+.info-docs-tab-wrapper .company-summary h4 {
+    font-size: 18px;
+    font-weight: 700;
+    margin-top: 8px;
+}
+
+.info-docs-table .table-row.info-content .cell {
+    font-size: 18px;
+}
+
+#company-sub-tab .info-docs-tab-item {
+    font-size: 18px;
+    font-weight: 400;
+}
+
+/* Info Docs Table Styles */
+.info-docs-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+
+.info-docs-table .table-row {
+    display: flex;
+    border-bottom: 1px solid #ddd;
+}
+
+.info-docs-table .table-row.table-title {
+    background-color: #0d3d56;
+    color: #fff;
+    font-weight: bold;
+    padding: 10px 15px;
+}
+
+.info-docs-table .table-row.table-title .cell {
+    color: #fff;
+}
+
+.info-docs-table .table-row.info-content {
+    background-color: #fff;
+}
+
+.info-docs-table .table-row.info-content:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+.info-docs-table .cell {
+    flex: 1;
+    padding: 10px 15px;
+    display: flex;
+    align-items: center;
+}
+
+.info-docs-table .cell:first-child {
+    font-weight: 600;
+    max-width: 300px;
+    flex: 0 0 300px;
+}
+
+/* Actions buttons */
+.actions a.btn {
+    margin-bottom: 10px;
+}
+
+/* Key Dates table */
+#key-dates-table {
+    width: 100% !important;
+}
+
+/* Search section */
+.seach_by_btn {
+    min-width: 180px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .info-docs-table .table-row {
+        flex-direction: column;
+    }
+
+    .info-docs-table .cell:first-child {
+        max-width: 100%;
+        flex: none;
+        background-color: #f5f5f5;
+    }
+}
+
+/* ============================================
+   COPIED FROM PERFEX theme2/layout/master.php
+   ============================================ */
+
+/* Form control styling from Perfex theme2 */
+.form-control {
+    border-color: #17A2B8 !important;
+    height: 3.7rem;
+    font-size: 1.5rem !important;
+    color: #17A2B8 !important;
+}
+
+/* Bootstrap-select button styling from Perfex theme2 */
+.bootstrap-select .btn {
+    color: #17A2B8 !important;
+    border: 1px solid #17a2b8 !important;
+    font-size: 1.5rem !important;
+}
+
+/* Dropdown menu items from Perfex theme2 */
+.bootstrap-select .dropdown-menu li {
+    border-bottom: 2px solid #17a2b8;
+}
+
+.bootstrap-select .dropdown-menu li a {
+    color: #343a40 !important;
+}
+
+.bootstrap-select .dropdown-menu li a span.text {
+    font-size: 1.125rem !important;
+    font-weight: 400 !important;
+}
+
+.bootstrap-select .dropdown-menu li a:hover {
+    background: #17a2b81a !important;
+}
+
+/* Text green class from Perfex */
+.text-green {
+    color: #17A2B8 !important;
+}
+
+/* ============================================
+   SEARCH BY BUTTON CSS FROM PERFEX theme2
+   ============================================ */
+
+/* Dropdown item hover/active states for info-docs */
+.dropdown-item-info-docs {
+    font-size: 1.125rem !important;
+    padding: 0.75rem 1rem !important;
+}
+.dropdown-item-info-docs.active,
+.dropdown-item-info-docs:active,
+.dropdown-item-info-docs:hover {
+    color: #fff !important;
+    background-color: #17A2B8 !important;
+}
+
+/* Style the form-group for layout */
+.form-group {
+    margin-bottom: 15px;
+    position: relative;
+}
+
+/* Filter buttons font size */
+#activeClients, #inactiveClients, #allClients {
+    font-size: 1rem !important;
+}
+
+/* ============================================
+   ADDITIONAL CSS FROM PERFEX theme2/layout/master.php
+   ============================================ */
+
+/* Spin animation */
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+.spin {
+    animation: spin 1s linear infinite;
+}
+
+/* Datepicker styling */
+.dtp-content {
+    max-width: 400px !important;
+    max-height: 685px !important;
+}
+.dtp-picker-days td {
+    padding: 0.6em !important;
+    font-weight: 500 !important;
+    font-size: .75rem !important;
+}
+.dtp-picker-days td a {
+    height: 2.4rem !important;
+    width: 2.4rem !important;
+    font-size: 16px !important;
+}
+.dtp-picker-days td a.selected {
+    background-color: #17a2b8 !important;
+}
+.dtp-date {
+    background-color: #17a2b8 !important;
+}
+.dtp-header {
+    background-color: #062a30 !important;
+}
+.dtp-select-month-before .material-icons,
+.dtp-select-month-after .material-icons,
+.dtp-select-year-before .material-icons,
+.dtp-select-year-after .material-icons,
+.dtp-actual-year {
+    color: #fff !important;
+}
+
+.datepicker {
+    height: 3.7rem;
+    padding-left: 9px !important;
+}
+
+/* Close button */
+.close-btn {
+    color: #ccc;
+    text-shadow: none;
+    margin-top: 0;
+    opacity: 1;
+    -webkit-appearance: none;
+    padding: 0;
+    cursor: pointer;
+    background: 0 0;
+    border: 0;
+    float: right;
+    font-size: 21px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+/* Parsley validation errors */
+.parsley-errors-list {
+    margin-top: 5px;
+    padding: 0;
+    list-style: none;
+    display: none;
+}
+.parsley-errors-list.filled {
+    display: block;
+}
+.parsley-errors-list li {
+    color: red;
+    background-color: #ffcccc;
+    padding: 5px;
+    border: 1px solid red;
+    border-radius: 3px;
+}
+
+/* Label formatting */
+.label-master {
+    font-size: 16px !important;
+    color: #000 !important;
+    font-weight: 700 !important;
+    margin-left: 12px !important;
+    font-family: 'poppins', sans-serif !important;
+}
+
+/* Card header */
+.card-header > h3 {
+    color: #fff !important;
+}
+
+/* Info docs table from Perfex master.php */
+.info-docs-table {
+    border-collapse: collapse;
+    display: table;
+    margin: 15px 0 30px;
+    width: 100%;
+    max-width: 100%;
+    table-layout: fixed;
+}
+.info-docs-table .table-row {
+    transition: .1s;
+    display: table-row;
+}
+.info-docs-table .cell {
+    display: table-cell;
+    padding: 6px 12px;
+}
+.info-docs-table .table-row.table-title {
+    background: #0d3d56;
+    caption-side: top;
+    color: #fff;
+    display: table-caption;
+    font-weight: 700;
+    border-radius: 5px 5px 0 0;
+}
+.info-docs-table .table-row.table-title .cell {
+    font-size: 16px;
+    font-weight: 600;
+}
+.info-docs-table .table-row.table-header {
+    background: #1496bb;
+    border: 1px solid #1496bb;
+    color: #fff;
+}
+.info-docs-table .table-row.table-header.table-header-past {
+    background: #FC2E53;
+    border: 1px solid #FC2E53;
+    color: #fff;
+}
+.info-docs-table .table-row.table-header .cell {
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 18px;
+    padding: 2px 12px;
+    color: #fff !important;
+}
+.info-docs-table .table-row.table-content {
+    border: 1px solid #ccc;
+    border-left: none;
+    border-right: none;
+}
+.info-docs-table .table-row.table-content .cell {
+    border-left: none;
+    border-right: none;
+    vertical-align: middle;
+    color: #333;
+    font-size: 14px;
+    font-weight: 400;
+}
+.info-docs-table .table-row.info-content {
+    border: 1px solid #ccc;
+    border-left: none;
+    border-right: none;
+}
+.info-docs-table .table-row.info-content .cell:first-of-type {
+    font-weight: 700;
+}
+.info-docs-table .table-row.info-content .cell {
+    border-left: none;
+    border-right: none;
+    vertical-align: middle;
+    color: #333;
+    font-size: 14px;
+    font-weight: 400;
+}
+.info-docs-table .table-row.table-content .date {
+    white-space: nowrap;
+}
+.info-docs-table .refresh {
+    color: #ccc;
+    background-color: #0d3d56;
+    border: none;
+    border-radius: 5px;
+    padding: 6px 12px;
+    float: right;
+}
+.info-docs-table .refresh i {
+    font-size: 18px;
+}
+.font_set_btn {
+    font-size: 14px;
+    font-weight: 600;
+}
+.info-docs-table .actions {
+    margin: 15px 0 30px;
+}
+.info-docs-table .actions h3 {
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin-bottom: 1rem;
+}
+.info-docs-table .actions .btn {
+    width: 100%;
+    margin-bottom: 0.5rem;
+}
+
+/* DataTable CSS */
+.dataTables_paginate {
+    display: flex;
+    justify-content: end;
+}
+.dataTables_paginate ul {
+    margin-bottom: 0px;
+    padding: 8px 12px;
+}
+.dataTables_scroll {
+    padding: 0 !important;
+    width: 100% !important;
+}
+.dataTables_scrollHeadInner {
+    padding-right: 0 !important;
+    margin-right: 0 !important;
+    width: 100% !important;
+}
+.dataTables_scrollHeadInner > table {
+    width: 100% !important;
+    min-width: 0 !important;
+}
+.dataTables_scrollHead,
+.dataTables_scrollBody {
+    margin: 0;
+    padding: 0;
+    width: 100% !important;
+}
+.dataTables_scrollHeadInner > table,
+.dataTables_scrollBody > table {
+    min-width: 0 !important;
+    width: 100% !important;
+}
+.dataTables_length {
+    float: left;
+}
+.dataTables_filter {
+    float: right;
+}
+
+/* ============================================
+   SMARTDASH FORM CARD STYLES
+   Global styling for all SmartDash forms
+   Uses CSS variables for consistency
+   ============================================ */
+
+/* Form Card Container */
+.smartdash-form-card {
+    border: none;
+    border-radius: var(--sd-border-radius-lg);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    margin-bottom: var(--sd-spacing-xl);
+}
+
+.smartdash-form-card .card-header {
+    background: linear-gradient(135deg, var(--sd-primary-dark) 0%, var(--sd-primary-light) 100%);
+    color: var(--sd-text-white);
+    border-radius: var(--sd-border-radius-lg) var(--sd-border-radius-lg) 0 0 !important;
+    padding: var(--sd-spacing-lg) var(--sd-spacing-xl);
+    border-bottom: none;
+}
+
+.smartdash-form-card .card-header h4,
+.smartdash-form-card .card-header .card-title {
+    font-family: var(--sd-font-family) !important;
+    color: var(--sd-text-white) !important;
+    font-size: var(--sd-font-size-lg) !important;
+    font-weight: var(--sd-font-weight-semibold) !important;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--sd-spacing-sm);
+}
+
+.smartdash-form-card .card-header h4 i,
+.smartdash-form-card .card-header .card-title i {
+    font-size: var(--sd-font-size-xl);
+}
+
+.smartdash-form-card .card-body {
+    padding: var(--sd-spacing-xl);
+    background: #fff;
+}
+
+/* Select dropdown styling */
+.smartdash-form-card select.form-control,
+.smartdash-form-card .form-select {
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%230d3d56' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 14px 10px;
+    padding-right: 40px;
+}
+
+/* Form check / checkbox */
+.smartdash-form-card .form-check-input {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--sd-primary);
+    cursor: pointer;
+    margin-top: 2px;
+}
+
+.smartdash-form-card .form-check-input:checked {
+    background-color: var(--sd-primary);
+    border-color: var(--sd-primary);
+}
+
+.smartdash-form-card .form-check-label {
+    font-family: var(--sd-font-family) !important;
+    font-size: var(--sd-font-size-base) !important;
+    font-weight: var(--sd-font-weight-normal) !important;
+    text-transform: none !important;
+    margin-left: var(--sd-spacing-sm);
+    cursor: pointer;
+}
+
+/* Buttons */
+.smartdash-form-card .btn-primary {
+    background: linear-gradient(135deg, var(--sd-primary) 0%, var(--sd-primary-dark) 100%);
+    border: none;
+    padding: var(--sd-spacing-sm) var(--sd-spacing-xl);
+    font-family: var(--sd-font-family);
+    font-size: var(--sd-font-size-base);
+    font-weight: var(--sd-font-weight-semibold);
+    border-radius: var(--sd-border-radius);
+    transition: all 0.3s ease;
+}
+
+.smartdash-form-card .btn-primary:hover {
+    background: linear-gradient(135deg, var(--sd-primary-dark) 0%, var(--sd-primary) 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px rgba(23, 162, 184, 0.4);
+}
+
+.smartdash-form-card .btn-danger {
+    background: linear-gradient(135deg, var(--sd-danger) 0%, #c92040 100%);
+    border: none;
+    padding: var(--sd-spacing-sm) var(--sd-spacing-xl);
+    font-family: var(--sd-font-family);
+    font-size: var(--sd-font-size-base);
+    font-weight: var(--sd-font-weight-semibold);
+    border-radius: var(--sd-border-radius);
+}
+
+.smartdash-form-card .btn-secondary,
+.smartdash-form-card .btn-outline-secondary {
+    font-family: var(--sd-font-family);
+    font-size: var(--sd-font-size-base);
+    font-weight: var(--sd-font-weight-medium);
+    border-radius: var(--sd-border-radius);
+}
+
+.smartdash-form-card .btn-lg {
+    font-size: var(--sd-font-size-lg);
+    padding: var(--sd-spacing-md) var(--sd-spacing-xl);
+}
+
+/* Section dividers */
+.form-section-title {
+    font-family: var(--sd-font-family);
+    font-size: var(--sd-font-size-lg);
+    font-weight: var(--sd-font-weight-bold);
+    color: var(--sd-primary-dark);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin: var(--sd-spacing-xl) 0 var(--sd-spacing-lg) 0;
+    padding-bottom: var(--sd-spacing-sm);
+    border-bottom: 2px solid var(--sd-primary);
+}
+
+.form-section-title i {
+    margin-right: var(--sd-spacing-sm);
+    color: var(--sd-primary);
+}
+
+/* ============================================
+   INPUT GROUP STYLING
+   Icons with inputs
+   ============================================ */
+.smartdash-form-card .input-group {
+    border-radius: var(--sd-border-radius);
+    overflow: hidden;
+}
+
+.smartdash-form-card .input-group-text {
+    background: linear-gradient(135deg, var(--sd-primary-dark) 0%, var(--sd-primary-light) 100%);
+    border: 2px solid var(--sd-primary);
+    border-right: none;
+    color: var(--sd-text-white);
+    font-size: var(--sd-font-size-xl);
+    min-width: 50px;
+    justify-content: center;
+    border-radius: var(--sd-border-radius) 0 0 var(--sd-border-radius) !important;
+}
+
+.smartdash-form-card .input-group .form-control {
+    border-left: none !important;
+    border-radius: 0 var(--sd-border-radius) var(--sd-border-radius) 0 !important;
+}
+
+/* ============================================
+   SPECIAL FIELD STYLES
+   Highlight fields, ID Number, etc.
+   ============================================ */
+.smartdash-form-card .highlight-field {
+    background-color: #fffde7 !important;
+    font-size: var(--sd-font-size-2xl) !important;
+    font-weight: var(--sd-font-weight-bold);
+    text-align: center !important;
+    border-color: var(--sd-warning) !important;
+}
+
+.smartdash-form-card .id-number-display,
+.smartdash-form-card input.id-number-display,
+.smartdash-form-card .form-control.id-number-display,
+input.form-control.id-number-display {
+    font-size: 24px !important;
+    letter-spacing: 3px;
+    font-weight: 700 !important;
+    color: #0a2d40 !important;
+    background: linear-gradient(135deg, #e8f7fa 0%, #d4f1f7 100%) !important;
+    border: 3px solid var(--sd-primary) !important;
+    text-align: center !important;
+    min-height: 50px;
+    padding: 8px 12px !important;
+}
+
+/* ============================================
+   SD_HIGHLIGHT - GLOBAL HIGHLIGHT CLASS
+   Use this class on any input to make it stand out
+   Perfect for key fields like ID numbers, passport numbers, etc.
+   Matches the id-number-display styling exactly
+   ============================================ */
+.sd_highlight,
+input.sd_highlight,
+.form-control.sd_highlight,
+.smartdash-form-card .sd_highlight,
+.smartdash-form-card input.sd_highlight,
+.smartdash-form-card .form-control.sd_highlight {
+    font-size: 24px !important;
+    letter-spacing: 3px !important;
+    font-weight: 700 !important;
+    color: #0a2d40 !important;
+    background: linear-gradient(135deg, #e8f7fa 0%, #d4f1f7 100%) !important;
+    border: 3px solid #17A2B8 !important;
+    text-align: center !important;
+    min-height: 50px !important;
+    padding: 8px 12px !important;
+    border-radius: 8px !important;
+}
+
+.sd_highlight:focus,
+input.sd_highlight:focus,
+.form-control.sd_highlight:focus,
+.smartdash-form-card .sd_highlight:focus,
+.smartdash-form-card input.sd_highlight:focus,
+.smartdash-form-card .form-control.sd_highlight:focus {
+    border-color: #0d3d56 !important;
+    box-shadow: 0 0 0 3px rgba(23, 162, 184, 0.25) !important;
+    outline: none !important;
+}
+
+/* ============================================
+   VALIDATION ERROR STYLING
+   ============================================ */
+.smartdash-form-card .parsley-errors-list {
+    list-style: none;
+    padding: 0;
+    margin: var(--sd-spacing-xs) 0 0 0;
+}
+
+.smartdash-form-card .parsley-errors-list li {
+    color: var(--sd-danger);
+    font-family: var(--sd-font-family);
+    font-size: var(--sd-font-size-sm);
+    font-weight: var(--sd-font-weight-medium);
+    background-color: #ffebee;
+    padding: var(--sd-spacing-xs) var(--sd-spacing-sm);
+    border-radius: var(--sd-border-radius-sm);
+    border: 1px solid var(--sd-danger);
+}
+
+.smartdash-form-card .parsley-error {
+    border-color: var(--sd-danger) !important;
+}
+
+/* Audit trail table */
+.smartdash-form-card .audit-table {
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.smartdash-form-card .audit-table thead {
+    background: #0d3d56;
+    color: #fff;
+}
+
+.smartdash-form-card .audit-table thead th {
+    color: #fff !important;
+    font-weight: 600;
+    padding: 12px 15px;
+    border: none;
+    font-size: 15px;
+}
+
+.smartdash-form-card .audit-table tbody td {
+    padding: 10px 15px;
+    border-bottom: 1px solid #eee;
+    font-size: 14px;
+}
+
+/* Map preview styling */
+.smartdash-form-card #map_preview {
+    width: 100%;
+    height: 400px;
+    background: #f5f5f5;
+    border-radius: 8px;
+    border: 2px solid #17A2B8;
+}
+
+/* ============================================
+   GLOBAL DROPDOWN / SELECT STYLING
+   Applies to all dropdowns across SmartDash
+   ============================================ */
+
+/* DataTables length dropdown (Show X entries) */
+.dataTables_length select,
+.dataTables_wrapper select {
+    border: 2px solid #17A2B8 !important;
+    border-radius: 8px !important;
+    padding: 8px 35px 8px 15px !important;
+    font-size: 16px !important;
+    color: #333 !important;
+    background-color: #fff !important;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%2317A2B8' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 10px center !important;
+    background-size: 14px 10px !important;
+    min-width: 80px;
+    height: 44px;
+}
+
+.dataTables_length select:focus,
+.dataTables_wrapper select:focus {
+    border-color: #0d3d56 !important;
+    box-shadow: 0 0 0 3px rgba(23, 162, 184, 0.15) !important;
+    outline: none !important;
+}
+
+/* DataTables search input */
+.dataTables_filter input {
+    border: 2px solid #17A2B8 !important;
+    border-radius: 8px !important;
+    padding: 8px 15px !important;
+    font-size: 16px !important;
+    color: #333 !important;
+    height: 44px;
+}
+
+.dataTables_filter input:focus {
+    border-color: #0d3d56 !important;
+    box-shadow: 0 0 0 3px rgba(23, 162, 184, 0.15) !important;
+    outline: none !important;
+}
+
+/* DataTables info and pagination text */
+.dataTables_info {
+    font-size: 15px;
+    color: #666;
+    padding-top: 10px;
+}
+
+/* DataTables pagination buttons */
+.dataTables_paginate .paginate_button {
+    border: 2px solid #17A2B8 !important;
+    border-radius: 6px !important;
+    padding: 8px 14px !important;
+    margin: 0 3px !important;
+    font-size: 14px !important;
+    color: #17A2B8 !important;
+    background: #fff !important;
+    cursor: pointer;
+}
+
+.dataTables_paginate .paginate_button:hover {
+    background: linear-gradient(135deg, #17A2B8 0%, #0d3d56 100%) !important;
+    color: #fff !important;
+    border-color: #17A2B8 !important;
+}
+
+.dataTables_paginate .paginate_button.current {
+    background: linear-gradient(135deg, #17A2B8 0%, #0d3d56 100%) !important;
+    color: #fff !important;
+    border-color: #17A2B8 !important;
+}
+
+.dataTables_paginate .paginate_button.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* General select styling for cards */
+.card select.form-control,
+.card select.form-select {
+    border: 2px solid #17A2B8 !important;
+    border-radius: 8px !important;
+    padding: 10px 40px 10px 15px !important;
+    font-size: 16px !important;
+    color: #333 !important;
+    background-color: #fff !important;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%2317A2B8' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 12px center !important;
+    background-size: 16px 12px !important;
+    height: 50px;
+}
+
+.card select.form-control:focus,
+.card select.form-select:focus {
+    border-color: #0d3d56 !important;
+    box-shadow: 0 0 0 3px rgba(23, 162, 184, 0.15) !important;
+    outline: none !important;
+}
+
+/* ============================================
+   SMARTDASH GLOBAL DROPDOWN CLASS
+   Use class "sd-dropdown" on any bootstrap-select
+   This references the existing Perfex dropdown styling
+   ============================================ */
+
+/* Global dropdown class - same as Perfex styling */
+.sd-dropdown .dropdown-menu,
+.smartdash-dropdown .dropdown-menu {
+    border: 2px solid #17a2b8 !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1) !important;
+    padding: 0 !important;
+}
+
+.sd-dropdown .dropdown-menu li,
+.smartdash-dropdown .dropdown-menu li {
+    border-bottom: 2px solid #17a2b8;
+}
+
+.sd-dropdown .dropdown-menu li:last-child,
+.smartdash-dropdown .dropdown-menu li:last-child {
+    border-bottom: none;
+}
+
+.sd-dropdown .dropdown-menu li a,
+.smartdash-dropdown .dropdown-menu li a {
+    color: #343a40 !important;
+    padding: 10px 15px !important;
+    font-size: 1.125rem !important;
+    font-weight: 400 !important;
+}
+
+.sd-dropdown .dropdown-menu li a span.text,
+.smartdash-dropdown .dropdown-menu li a span.text {
+    font-size: 1.125rem !important;
+    font-weight: 400 !important;
+}
+
+.sd-dropdown .dropdown-menu li a:hover,
+.smartdash-dropdown .dropdown-menu li a:hover {
+    background: #17a2b81a !important;
+    color: #0d3d56 !important;
+}
+
+.sd-dropdown .dropdown-menu li.selected a,
+.sd-dropdown .dropdown-menu li.active a,
+.smartdash-dropdown .dropdown-menu li.selected a,
+.smartdash-dropdown .dropdown-menu li.active a {
+    background: #17A2B8 !important;
+    color: #fff !important;
+}
+
+.sd-dropdown .dropdown-menu li.selected a span.text,
+.sd-dropdown .dropdown-menu li.active a span.text,
+.smartdash-dropdown .dropdown-menu li.selected a span.text,
+.smartdash-dropdown .dropdown-menu li.active a span.text {
+    color: #fff !important;
+}
+
+/* Dropdown header styling */
+.sd-dropdown .dropdown-header,
+.smartdash-dropdown .dropdown-header {
+    background: linear-gradient(135deg, #e8f7fa 0%, #d4f1f7 100%) !important;
+    color: #0d3d56 !important;
+    font-size: 1rem !important;
+    font-weight: 600 !important;
+    padding: 10px 15px !important;
+    border-bottom: 2px solid #17a2b8 !important;
+}
+
+/* Search box in dropdown */
+.sd-dropdown .bs-searchbox,
+.smartdash-dropdown .bs-searchbox {
+    padding: 10px !important;
+    border-bottom: 2px solid #17a2b8;
+}
+
+.sd-dropdown .bs-searchbox input,
+.smartdash-dropdown .bs-searchbox input {
+    border: 2px solid #17a2b8 !important;
+    border-radius: 6px !important;
+    padding: 8px 12px !important;
+    font-size: 1rem !important;
+}
+
+.sd-dropdown .bs-searchbox input:focus,
+.smartdash-dropdown .bs-searchbox input:focus {
+    border-color: #0d3d56 !important;
+    box-shadow: 0 0 0 3px rgba(23, 162, 184, 0.15) !important;
+    outline: none !important;
+}
+
+/* ============================================
+   SD_DROP_CLASS - GLOBAL DROPDOWN CLASS
+   Use this class on any select to get teal dropdown styling
+   Requires Bootstrap-Select to be initialized on the element
+   ============================================ */
+
+/* sd_drop_class selects - Bootstrap-Select handles the display */
+/* No additional hiding needed - Bootstrap-Select manages visibility */
+
+/* Bootstrap-Select wrapper - full width */
+.bootstrap-select.sd_drop_class {
+    width: 100% !important;
+}
+
+/* Button/trigger styling */
+.bootstrap-select.sd_drop_class > .dropdown-toggle {
+    width: 100% !important;
+    border: 2px solid #17a2b8 !important;
+    border-radius: 8px !important;
+    background-color: #fff !important;
+    color: #333 !important;
+    font-size: 18px !important;
+    min-height: 48px !important;
+    height: auto !important;
+    padding: 8px 12px !important;
+    line-height: 1.5 !important;
+}
+
+.bootstrap-select.sd_drop_class > .dropdown-toggle:focus,
+.bootstrap-select.sd_drop_class > .dropdown-toggle:active {
+    border-color: #0d3d56 !important;
+    box-shadow: 0 0 0 3px rgba(23, 162, 184, 0.15) !important;
+    outline: none !important;
+}
+
+.bootstrap-select.sd_drop_class > .dropdown-toggle .filter-option-inner-inner {
+    color: #333 !important;
+}
+
+.sd_drop_class .dropdown-menu {
+    border: 1px solid #17a2b8 !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1) !important;
+    padding: 0 !important;
+}
+
+.sd_drop_class .dropdown-menu li {
+    border-bottom: 1px solid #17a2b8;
+}
+
+.sd_drop_class .dropdown-menu li:last-child {
+    border-bottom: none;
+}
+
+.sd_drop_class .dropdown-menu li a {
+    color: #343a40 !important;
+    padding: 10px 15px !important;
+    font-size: 1.125rem !important;
+    font-weight: 400 !important;
+}
+
+.sd_drop_class .dropdown-menu li a span.text {
+    font-size: 1.125rem !important;
+    font-weight: 400 !important;
+}
+
+.sd_drop_class .dropdown-menu li a:hover {
+    background: #17a2b81a !important;
+    color: #0d3d56 !important;
+}
+
+.sd_drop_class .dropdown-menu li.selected a,
+.sd_drop_class .dropdown-menu li.active a {
+    background: #17A2B8 !important;
+    color: #fff !important;
+}
+
+.sd_drop_class .dropdown-menu li.selected a span.text,
+.sd_drop_class .dropdown-menu li.active a span.text {
+    color: #fff !important;
+}
+
+.sd_drop_class .bs-searchbox {
+    padding: 10px !important;
+    border-bottom: 1px solid #17a2b8;
+}
+
+.sd_drop_class .bs-searchbox input {
+    border: 1px solid #17a2b8 !important;
+    border-radius: 6px !important;
+    padding: 8px 12px !important;
+    font-size: 1rem !important;
+}
+
+.sd_drop_class .bs-searchbox input:focus {
+    border-color: #0d3d56 !important;
+    box-shadow: 0 0 0 3px rgba(23, 162, 184, 0.15) !important;
+    outline: none !important;
+}
+
+/* ============================================
+   SELECT2 GLOBAL STYLING
+   Matches the SmartDash teal dropdown theme
+   ============================================ */
+
+/* Select2 container/selection box */
+.select2-container--default .select2-selection--single {
+    border: 2px solid #17A2B8 !important;
+    border-radius: 8px !important;
+    height: 48px !important;
+    padding: 8px 12px;
+    background-color: #fff;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+    font-size: 18px !important;
+    color: #333 !important;
+    line-height: 28px;
+    padding-left: 0;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 44px !important;
+    right: 10px;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__arrow b {
+    border-color: #17A2B8 transparent transparent transparent !important;
+    border-width: 6px 5px 0 5px !important;
+}
+
+.select2-container--default.select2-container--open .select2-selection--single .select2-selection__arrow b {
+    border-color: transparent transparent #17A2B8 transparent !important;
+    border-width: 0 5px 6px 5px !important;
+}
+
+.select2-container--default.select2-container--focus .select2-selection--single,
+.select2-container--default.select2-container--open .select2-selection--single {
+    border-color: #0d3d56 !important;
+    box-shadow: 0 0 0 3px rgba(23, 162, 184, 0.15) !important;
+}
+
+/* Select2 dropdown */
+.select2-dropdown {
+    border: 2px solid #17A2B8 !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1) !important;
+}
+
+/* Select2 search box */
+.select2-container--default .select2-search--dropdown .select2-search__field {
+    border: 2px solid #17A2B8 !important;
+    border-radius: 6px !important;
+    padding: 8px 12px !important;
+    font-size: 16px !important;
+}
+
+.select2-container--default .select2-search--dropdown .select2-search__field:focus {
+    border-color: #0d3d56 !important;
+    box-shadow: 0 0 0 3px rgba(23, 162, 184, 0.15) !important;
+    outline: none !important;
+}
+
+/* Select2 results/options */
+.select2-container--default .select2-results__option {
+    padding: 10px 15px !important;
+    font-size: 16px !important;
+    border-bottom: 2px solid #17a2b8;
+    color: #333;
+}
+
+.select2-container--default .select2-results__option:last-child {
+    border-bottom: none;
+}
+
+/* Select2 hover state */
+.select2-container--default .select2-results__option--highlighted[aria-selected] {
+    background: #17a2b81a !important;
+    color: #0d3d56 !important;
+}
+
+/* Select2 selected state */
+.select2-container--default .select2-results__option[aria-selected=true],
+.select2-container--default .select2-results__option--selected {
+    background: #17A2B8 !important;
+    color: #fff !important;
+}
+
+/* ============================================
+   SD_BTN - GLOBAL BUTTON CLASS
+   Use this class for consistent teal gradient button styling
+   ============================================ */
+.sd_btn,
+.btn.sd_btn {
+    background: linear-gradient(135deg, #17A2B8, #138496) !important;
+    border: none !important;
+    color: #fff !important;
+    padding: 12px 25px !important;
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 15px rgba(23, 162, 184, 0.3);
+    transition: all 0.3s ease;
+}
+
+.sd_btn:hover,
+.btn.sd_btn:hover {
+    background: linear-gradient(135deg, #138496, #117a8b) !important;
+    color: #fff !important;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(23, 162, 184, 0.4);
+}
+
+.sd_btn:focus,
+.btn.sd_btn:focus {
+    box-shadow: 0 0 0 3px rgba(23, 162, 184, 0.25) !important;
+    outline: none !important;
+}
+
+/* Secondary/Cancel button variant */
+.sd_btn_secondary,
+.btn.sd_btn_secondary {
+    background: linear-gradient(135deg, #6c757d, #5a6268) !important;
+    border: none !important;
+    color: #fff !important;
+    padding: 12px 25px !important;
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 15px rgba(108, 117, 125, 0.3);
+    transition: all 0.3s ease;
+}
+
+.sd_btn_secondary:hover,
+.btn.sd_btn_secondary:hover {
+    background: linear-gradient(135deg, #5a6268, #495057) !important;
+    color: #fff !important;
+    transform: translateY(-2px);
+}
+
+.sd_btn_secondary:focus,
+.btn.sd_btn_secondary:focus {
+    box-shadow: 0 0 0 3px rgba(108, 117, 125, 0.25) !important;
+    outline: none !important;
+}
+
+/* Danger/Delete button variant (Red) */
+.sd_btn_danger,
+.btn.sd_btn_danger {
+    background: linear-gradient(135deg, #dc3545, #c82333) !important;
+    border: none !important;
+    color: #fff !important;
+    padding: 12px 25px !important;
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
+    transition: all 0.3s ease;
+}
+
+.sd_btn_danger:hover,
+.btn.sd_btn_danger:hover {
+    background: linear-gradient(135deg, #c82333, #bd2130) !important;
+    color: #fff !important;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(220, 53, 69, 0.4);
+}
+
+.sd_btn_danger:focus,
+.btn.sd_btn_danger:focus {
+    box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.25) !important;
+    outline: none !important;
+}
+
+/* Success button variant (Green) */
+.sd_btn_success,
+.btn.sd_btn_success {
+    background: linear-gradient(135deg, #28a745, #218838) !important;
+    border: none !important;
+    color: #fff !important;
+    padding: 12px 25px !important;
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+    transition: all 0.3s ease;
+}
+
+.sd_btn_success:hover,
+.btn.sd_btn_success:hover {
+    background: linear-gradient(135deg, #218838, #1e7e34) !important;
+    color: #fff !important;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
+}
+
+.sd_btn_success:focus,
+.btn.sd_btn_success:focus {
+    box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.25) !important;
+    outline: none !important;
+}
+
+/* Warning button variant (Orange/Yellow) */
+.sd_btn_warning,
+.btn.sd_btn_warning {
+    background: linear-gradient(135deg, #ffc107, #e0a800) !important;
+    border: none !important;
+    color: #212529 !important;
+    padding: 12px 25px !important;
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 15px rgba(255, 193, 7, 0.3);
+    transition: all 0.3s ease;
+}
+
+.sd_btn_warning:hover,
+.btn.sd_btn_warning:hover {
+    background: linear-gradient(135deg, #e0a800, #d39e00) !important;
+    color: #212529 !important;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 193, 7, 0.4);
+}
+
+.sd_btn_warning:focus,
+.btn.sd_btn_warning:focus {
+    box-shadow: 0 0 0 3px rgba(255, 193, 7, 0.25) !important;
+    outline: none !important;
+}
+
+/* Info button variant (Light Blue) */
+.sd_btn_info,
+.btn.sd_btn_info {
+    background: linear-gradient(135deg, #17a2b8, #138496) !important;
+    border: none !important;
+    color: #fff !important;
+    padding: 12px 25px !important;
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 15px rgba(23, 162, 184, 0.3);
+    transition: all 0.3s ease;
+}
+
+.sd_btn_info:hover,
+.btn.sd_btn_info:hover {
+    background: linear-gradient(135deg, #138496, #117a8b) !important;
+    color: #fff !important;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(23, 162, 184, 0.4);
+}
+
+.sd_btn_info:focus,
+.btn.sd_btn_info:focus {
+    box-shadow: 0 0 0 3px rgba(23, 162, 184, 0.25) !important;
+    outline: none !important;
+}
+
+/* Outline button variants */
+.sd_btn_outline,
+.btn.sd_btn_outline {
+    background: transparent !important;
+    border: 2px solid #17A2B8 !important;
+    color: #17A2B8 !important;
+    padding: 10px 23px !important;
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    border-radius: 8px !important;
+    transition: all 0.3s ease;
+}
+
+.sd_btn_outline:hover,
+.btn.sd_btn_outline:hover {
+    background: linear-gradient(135deg, #17A2B8, #138496) !important;
+    border-color: #17A2B8 !important;
+    color: #fff !important;
+    transform: translateY(-2px);
+}
+
+.sd_btn_outline:focus,
+.btn.sd_btn_outline:focus {
+    box-shadow: 0 0 0 3px rgba(23, 162, 184, 0.25) !important;
+    outline: none !important;
+}
+
+/* Small button size */
+.sd_btn_sm,
+.btn.sd_btn_sm {
+    padding: 8px 16px !important;
+    font-size: 14px !important;
+}
+
+/* Large button size */
+.sd_btn_lg,
+.btn.sd_btn_lg {
+    padding: 16px 32px !important;
+    font-size: 18px !important;
+}
+
+/* ============================================
+   EMAIL VALIDATION STYLING
+   ============================================ */
+.email_validation.is-valid {
+    border-color: #28a745 !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3e%3cpath fill='%2328a745' d='M2.3 6.73L.6 4.53c-.4-1.04.46-1.4 1.1-.8l1.1 1.4 3.4-3.8c.6-.63 1.6-.27 1.2.7l-4 4.6c-.43.5-.8.4-1.1.1z'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 16px 16px;
+    padding-right: 40px;
+}
+
+.email_validation.is-invalid {
+    border-color: #dc3545 !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23dc3545'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath stroke-linejoin='round' d='M5.8 3.6h.4L6 6.5z'/%3e%3ccircle cx='6' cy='8.2' r='.6' fill='%23dc3545' stroke='none'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 16px 16px;
+    padding-right: 40px;
+}
+
+.email-error-msg {
+    display: block;
+    margin-top: 4px;
+    font-size: 12px;
+}
+
+/* ============================================
+   SD_TOOLTIP - GLOBAL TOOLTIP CLASSES
+   Use these classes for consistent tooltip/info box styling
+
+   Usage:
+   <div class="sd_tooltip_teal">Your info message here</div>
+   <div class="sd_tooltip_red">Your error message here</div>
+
+   Add class "show" to display, remove to hide
+   ============================================ */
+
+/* Teal Info Tooltip - appears below field with left marker */
+.sd_tooltip_teal {
+    display: none;
+    position: relative;
+    margin-top: 8px;
+    padding: 12px 15px;
+    background: #f0f9ff;
+    border-left: 4px solid #17A2B8;
+    border-radius: 0 6px 6px 0;
+    font-size: 13px;
+    color: #0d3d56;
+    line-height: 1.5;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.sd_tooltip_teal::before {
+    content: '\f05a';
+    font-family: 'Font Awesome 5 Free';
+    font-weight: 900;
+    margin-right: 8px;
+    color: #17A2B8;
+}
+
+.sd_tooltip_teal.show {
+    display: block;
+    animation: sd_tooltip_fadeIn 0.2s ease-in-out;
+}
+
+/* Red Error Tooltip - same style but red */
+.sd_tooltip_red {
+    display: none;
+    position: relative;
+    margin-top: 8px;
+    padding: 12px 15px;
+    background: #fff5f5;
+    border-left: 4px solid #dc3545;
+    border-radius: 0 6px 6px 0;
+    font-size: 13px;
+    color: #721c24;
+    line-height: 1.5;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.sd_tooltip_red::before {
+    content: '\f071';
+    font-family: 'Font Awesome 5 Free';
+    font-weight: 900;
+    margin-right: 8px;
+    color: #dc3545;
+}
+
+.sd_tooltip_red.show {
+    display: block;
+    animation: sd_tooltip_fadeIn 0.2s ease-in-out;
+}
+
+/* Green Success Tooltip */
+.sd_tooltip_green {
+    display: none;
+    position: relative;
+    margin-top: 8px;
+    padding: 12px 15px;
+    background: #f0fff4;
+    border-left: 4px solid #28a745;
+    border-radius: 0 6px 6px 0;
+    font-size: 13px;
+    color: #155724;
+    line-height: 1.5;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.sd_tooltip_green::before {
+    content: '\f058';
+    font-family: 'Font Awesome 5 Free';
+    font-weight: 900;
+    margin-right: 8px;
+    color: #28a745;
+}
+
+.sd_tooltip_green.show {
+    display: block;
+    animation: sd_tooltip_fadeIn 0.2s ease-in-out;
+}
+
+/* Warning/Orange Tooltip */
+.sd_tooltip_warning {
+    display: none;
+    position: relative;
+    margin-top: 8px;
+    padding: 12px 15px;
+    background: #fff8e6;
+    border-left: 4px solid #ffc107;
+    border-radius: 0 6px 6px 0;
+    font-size: 13px;
+    color: #856404;
+    line-height: 1.5;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.sd_tooltip_warning::before {
+    content: '\f06a';
+    font-family: 'Font Awesome 5 Free';
+    font-weight: 900;
+    margin-right: 8px;
+    color: #ffc107;
+}
+
+.sd_tooltip_warning.show {
+    display: block;
+    animation: sd_tooltip_fadeIn 0.2s ease-in-out;
+}
+
+/* Fade in animation for tooltips */
+@keyframes sd_tooltip_fadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ============================================
+   SD_SENTENCE_CASE - TEXT TRANSFORM CLASS
+   Use this class on inputs to format as Sentence Case
+   Requires JavaScript initialization (on blur event)
+
+   Usage:
+   <input class="form-control sd_sentence_case" ...>
+
+   JavaScript (add to your page):
+   function toSentenceCase(str) {
+       if (!str) return str;
+       return str.toLowerCase().replace(/(^\s*\w|[.!?]\s*\w)/g, function(c) {
+           return c.toUpperCase();
+       }).replace(/\b(pty|ltd|npc|cc|inc|soc)\b/gi, function(m) {
+           return m.toUpperCase();
+       });
+   }
+   document.querySelectorAll('.sd_sentence_case').forEach(function(input) {
+       input.addEventListener('blur', function() {
+           this.value = toSentenceCase(this.value);
+       });
+   });
+   ============================================ */
+.sd_sentence_case {
+    text-transform: capitalize;
+}
+
+/* ============================================
+   SD_READONLY - GLOBAL READ-ONLY INPUT CLASS
+   Use this class on readonly inputs for consistent styling
+   White background instead of grey
+
+   Usage:
+   <input class="form-control sd_readonly" readonly>
+   ============================================ */
+.sd_readonly,
+input.sd_readonly,
+.form-control.sd_readonly,
+.smartdash-form-card .sd_readonly,
+.smartdash-form-card input.sd_readonly,
+.smartdash-form-card .form-control.sd_readonly {
+    background-color: #ffffff !important;
+    color: #333 !important;
+    cursor: default;
+    border: 2px solid #17A2B8 !important;
+}
+
+.sd_readonly:focus,
+input.sd_readonly:focus,
+.form-control.sd_readonly:focus {
+    background-color: #ffffff !important;
+    box-shadow: none !important;
+}
+
+/* ============================================
+   TOGGLE SWITCH - Fillow Style
+   Slide toggle for on/off states
+
+   Usage:
+   <div class="switch">
+       <label>
+           <input type="checkbox" name="field_name" value="1">
+           <span class="lever"></span>
+       </label>
+   </div>
+   ============================================ */
+.switch,
+.switch * {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+.switch label {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    margin: 0;
+    padding-top: 10px;
+}
+
+.switch label input[type=checkbox] {
+    opacity: 0;
+    width: 0;
+    height: 0;
+    position: absolute;
+}
+
+.switch label .lever {
+    content: "";
+    display: inline-block;
+    position: relative;
+    width: 44px;
+    height: 22px;
+    background-color: #c7c7c7;
+    border-radius: 15px;
+    transition: background 0.3s ease;
+    vertical-align: middle;
+}
+
+.switch label .lever:after {
+    content: "";
+    position: absolute;
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    background-color: #F1F1F1;
+    border-radius: 50%;
+    left: 2px;
+    top: 2px;
+    transition: left 0.3s ease, background 0.3s ease;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.switch label input[type=checkbox]:checked + .lever {
+    background-color: #17A2B8;
+}
+
+.switch label input[type=checkbox]:checked + .lever:after {
+    background-color: #fff;
+    left: 24px;
+}
+
+/* ============================================
+   SECTION DIVIDERS
+   Dark blue horizontal lines for separating form sections
+   ============================================ */
+.sd_section_divider {
+    border: 0;
+    height: 2px;
+    background: linear-gradient(to right, var(--sd-primary-dark), var(--sd-primary), var(--sd-primary-dark));
+    margin: 20px 0;
+    opacity: 0.7;
+}
+
+/* ============================================
+   STYLED FILE UPLOAD
+   Professional file upload with icon display
+   ============================================ */
+.sd_file_upload {
+    position: relative;
+    width: 100%;
+}
+
+.sd_file_input {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    opacity: 0;
+    cursor: pointer;
+    z-index: 2;
+}
+
+.sd_file_display {
+    display: flex;
+    align-items: center;
+    min-height: 48px;
+    padding: 8px 12px;
+    background: #fff;
+    border: 2px solid var(--sd-primary);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.sd_file_display:hover {
+    background: #f8f9fa;
+    border-color: var(--sd-primary-dark);
+}
+
+.sd_file_icon {
+    font-size: 24px;
+    margin-right: 10px;
+    color: #999;
+    transition: color 0.3s ease;
+}
+
+.sd_file_icon.pdf {
+    color: #dc3545;
+}
+
+.sd_file_icon.doc {
+    color: #0d6efd;
+}
+
+.sd_file_icon.image {
+    color: #28a745;
+}
+
+.sd_file_text {
+    flex: 1;
+    font-size: 14px;
+    color: #666;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sd_file_text.has-file {
+    color: #333;
+    font-weight: 500;
+}
+
+.sd_file_display.has-file {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+}
+
+/* ============================================
+   SMARTDASH HORIZONTAL MENU STYLING
+   Flat design - matching original custom menu
+   ============================================ */
+
+/* Background - teal gradient */
+[data-layout="horizontal"] .dlabnav,
+body[data-layout="horizontal"] .dlabnav {
+    background: linear-gradient(135deg, #0d3d56 0%, #17A2B8 100%) !important;
+    box-shadow: 0 4px 20px rgba(23, 162, 184, 0.3) !important;
+}
+
+/* CRITICAL: Remove ALL pill/rounded styling from menu items */
+[data-layout="horizontal"] .dlabnav .metismenu > li > a {
+    color: rgba(255,255,255,0.85) !important;
+    font-weight: 600 !important;
+    font-size: 14px !important;
+    padding: 15px 18px !important;
+    margin: 0 !important;
+    transition: all 0.25s ease !important;
+    border-bottom: 3px solid transparent !important;
+    border-radius: 0 !important;
+    -webkit-border-radius: 0 !important;
+    -moz-border-radius: 0 !important;
+    background: transparent !important;
+    background-color: transparent !important;
+    background-image: none !important;
+}
+
+/* Target ALL possible theme variations */
+[data-layout="horizontal"] .dlabnav .metismenu > li,
+[data-layout="horizontal"] .dlabnav .metismenu > li > a,
+[data-theme-version="light"][data-layout="horizontal"] .dlabnav .metismenu > li > a,
+[data-theme-version="dark"][data-layout="horizontal"] .dlabnav .metismenu > li > a,
+[data-sidebar-style="mini"][data-layout="horizontal"] .dlabnav .metismenu > li > a,
+[data-sidebar-style="full"][data-layout="horizontal"] .dlabnav .metismenu > li > a {
+    border-radius: 0 !important;
+    margin: 0 !important;
+    background: transparent !important;
+}
+
+/* Hover Effect - white/light background, green underline */
+[data-layout="horizontal"] .dlabnav .metismenu > li > a:hover,
+[data-layout="horizontal"] .dlabnav .metismenu > li:hover > a {
+    color: #0d3d56 !important;
+    background: linear-gradient(135deg, #fff 0%, #e0f7fa 100%) !important;
+    border-bottom-color: #20c997 !important;
+    border-radius: 0 !important;
+}
+
+[data-layout="horizontal"] .dlabnav .metismenu > li > a:hover i,
+[data-layout="horizontal"] .dlabnav .metismenu > li:hover > a i {
+    color: #17A2B8 !important;
+    transform: scale(1.15);
+}
+
+/* Active Menu Item */
+[data-layout="horizontal"] .dlabnav .metismenu > li.mm-active > a {
+    color: #fff !important;
+    background: rgba(255,255,255,0.2) !important;
+    border-bottom-color: #20c997 !important;
+    border-radius: 0 !important;
+}
+
+/* Menu Icons */
+[data-layout="horizontal"] .dlabnav .metismenu > li > a i {
+    font-size: 16px !important;
+    transition: all 0.25s ease !important;
+    color: rgba(255,255,255,0.85) !important;
+}
+
+/* Dropdown Arrow */
+[data-layout="horizontal"] .dlabnav .metismenu > li > a.has-arrow::after {
+    border-color: rgba(255,255,255,0.7) !important;
+}
+
+[data-layout="horizontal"] .dlabnav .metismenu > li:hover > a.has-arrow::after {
+    border-color: #17A2B8 !important;
+}
+
+/* Dropdown Sub-Menu */
+[data-layout="horizontal"] .dlabnav .metismenu > li > ul {
+    background: #fff !important;
+    border-radius: 0 0 12px 12px !important;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.15) !important;
+}
+
+[data-layout="horizontal"] .dlabnav .metismenu > li > ul > li > a {
+    color: #334155 !important;
+    font-weight: 500 !important;
+    font-size: 14px !important;
+    padding: 12px 18px !important;
+    border-left: 3px solid transparent !important;
+    border-radius: 0 !important;
+}
+
+[data-layout="horizontal"] .dlabnav .metismenu > li > ul > li > a:hover {
+    background: linear-gradient(90deg, #e0f7fa 0%, #fff 100%) !important;
+    color: #17A2B8 !important;
+    border-left-color: #17A2B8 !important;
+}
+
+[data-layout="horizontal"] .dlabnav .metismenu > li > ul > li > a i {
+    color: #64748b !important;
+    margin-right: 10px !important;
+}
+
+[data-layout="horizontal"] .dlabnav .metismenu > li > ul > li > a:hover i {
+    color: #17A2B8 !important;
+}
+
+/* Nav Text */
+[data-layout="horizontal"] .dlabnav .metismenu > li > a .nav-text {
+    color: inherit !important;
+}
+
+/* ============================================
+   SD_DATEPICKER - GLOBAL DATE PICKER CLASSES
+   Use these classes for consistent date picker styling
+   Requires Bootstrap Material DatePicker and Moment.js
+
+   Classes:
+   - sd_datepicker: Standard date picker (no date restrictions)
+   - sd_datepicker_max: Date picker with max date = today (cannot select future dates)
+
+   HTML Usage:
+   <input type="text" id="mydate_display" class="form-control sd_datepicker" placeholder="Select date" readonly>
+   <input type="hidden" id="mydate" name="mydate" value="">
+
+   <input type="text" id="reg_date_display" class="form-control sd_datepicker_max" placeholder="Select date" readonly>
+   <input type="hidden" id="reg_date" name="reg_date" value="">
+
+   Display Format: "Tue, 10 Jan 2026"
+   Database Format: "2026-01-10" (YYYY-MM-DD)
+
+   Required JS/CSS:
+   <link href="/public/smartdash/vendor/bootstrap-material-datetimepicker/css/bootstrap-material-datetimepicker.css" rel="stylesheet">
+   <script src="/public/smartdash/vendor/moment/moment.min.js"></script>
+   <script src="/public/smartdash/vendor/bootstrap-material-datetimepicker/js/bootstrap-material-datetimepicker.js"></script>
+
+   JavaScript Initialization (add to your page):
+   $(function() {
+       // Format date for display (Tue, 10 Jan 2026)
+       function formatDateDisplay(date) {
+           if (!date) return '';
+           var d = new Date(date);
+           var days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+           var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+           return days[d.getDay()] + ', ' + d.getDate() + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
+       }
+
+       // Format date for database (YYYY-MM-DD)
+       function formatDateDB(date) {
+           if (!date) return '';
+           var d = new Date(date);
+           var year = d.getFullYear();
+           var month = String(d.getMonth() + 1).padStart(2, '0');
+           var day = String(d.getDate()).padStart(2, '0');
+           return year + '-' + month + '-' + day;
+       }
+
+       // Initialize sd_datepicker (no max date restriction)
+       if ($.fn.bootstrapMaterialDatePicker) {
+           $('.sd_datepicker').each(function() {
+               var $display = $(this);
+               var fieldName = $display.attr('id').replace('_display', '');
+               var $hidden = $('#' + fieldName);
+               if ($hidden.val()) { $display.val(formatDateDisplay($hidden.val())); }
+               $display.bootstrapMaterialDatePicker({
+                   weekStart: 0, time: false, format: 'ddd, D MMM YYYY', clearButton: true
+               }).on('change', function(e, date) {
+                   $hidden.val(date ? formatDateDB(date) : '');
+               });
+           });
+
+           // Initialize sd_datepicker_max (max date = today)
+           $('.sd_datepicker_max').each(function() {
+               var $display = $(this);
+               var fieldName = $display.attr('id').replace('_display', '');
+               var $hidden = $('#' + fieldName);
+               if ($hidden.val()) { $display.val(formatDateDisplay($hidden.val())); }
+               $display.bootstrapMaterialDatePicker({
+                   weekStart: 0, time: false, format: 'ddd, D MMM YYYY', maxDate: new Date(), clearButton: true
+               }).on('change', function(e, date) {
+                   $hidden.val(date ? formatDateDB(date) : '');
+               });
+           });
+       }
+   });
+   ============================================ */
+
+/* Date picker input styling */
+.sd_datepicker,
+.sd_datepicker_max,
+input.sd_datepicker,
+input.sd_datepicker_max,
+.form-control.sd_datepicker,
+.form-control.sd_datepicker_max {
+    cursor: pointer !important;
+    background-color: #fff !important;
+}
+
+.sd_datepicker:focus,
+.sd_datepicker_max:focus {
+    border-color: var(--sd-primary-dark) !important;
+    box-shadow: 0 0 0 3px rgba(23, 162, 184, 0.15) !important;
+}
+
+/* ============================================
+   GOLDEN RULE: TOOLTIPS
+   ============================================
+   Use sd_tooltip_teal (or sd_tooltip_red, sd_tooltip_green, sd_tooltip_warning)
+   for all tooltip/info messages. These classes are defined earlier in this file.
+
+   HTML Usage:
+   <div class="sd_tooltip_teal">Your info message here</div>
+   <div class="sd_tooltip_red">Your error message here</div>
+   <div class="sd_tooltip_green">Your success message here</div>
+   <div class="sd_tooltip_warning">Your warning message here</div>
+
+   JavaScript to show/hide:
+   element.classList.add('show');    // Show tooltip
+   element.classList.remove('show'); // Hide tooltip
+
+   For menu tooltips, add class "sd-menu-tooltip" for side positioning:
+   <div class="sd_tooltip_teal sd-menu-tooltip">Tooltip text</div>
+   ============================================ */

@@ -1,0 +1,11 @@
+{
+    "name": "CustomerAgedAnalysis",
+    "alias": "customeragedanalysis",
+    "description": "Customer Aged Analysis Report - summary and detailed views of outstanding balances by aging bucket",
+    "keywords": ["aging", "aged", "analysis", "customer", "outstanding"],
+    "priority": 0,
+    "providers": [
+        "Modules\\CustomerAgedAnalysis\\Providers\\ModuleServiceProvider"
+    ],
+    "files": []
+}

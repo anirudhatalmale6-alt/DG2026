@@ -1,0 +1,42 @@
+[2026-02-25 16:31:52] production.ERROR: Call to undefined method ReflectionFunction::isAnonymous() {"exception":"[object] (Error(code: 0): Call to undefined method ReflectionFunction::isAnonymous() at /usr/www/users/smartucbmh/application/vendor/laravel/framework/src/Illuminate/Container/Container.php:680)
+[stacktrace]
+#0 /usr/www/users/smartucbmh/application/vendor/laravel/framework/src/Illuminate/Container/Container.php(652): Illuminate\\Container\\Container->getClassForCallable()
+#1 /usr/www/users/smartucbmh/application/vendor/laravel/framework/src/Illuminate/Foundation/Application.php(1099): Illuminate\\Container\\Container->call()
+#2 /usr/www/users/smartucbmh/application/vendor/laravel/framework/src/Illuminate/Foundation/Application.php(1080): Illuminate\\Foundation\\Application->bootProvider()
+#3 [internal function]: Illuminate\\Foundation\\Application->Illuminate\\Foundation\\{closure}()
+#4 /usr/www/users/smartucbmh/application/vendor/laravel/framework/src/Illuminate/Foundation/Application.php(1081): array_walk()
+#5 /usr/www/users/smartucbmh/application/vendor/laravel/framework/src/Illuminate/Foundation/Bootstrap/BootProviders.php(17): Illuminate\\Foundation\\Application->boot()
+#6 /usr/www/users/smartucbmh/application/vendor/laravel/framework/src/Illuminate/Foundation/Application.php(309): Illuminate\\Foundation\\Bootstrap\\BootProviders->bootstrap()
+#7 /usr/www/users/smartucbmh/application/vendor/laravel/framework/src/Illuminate/Foundation/Console/Kernel.php(470): Illuminate\\Foundation\\Application->bootstrapWith()
+#8 /usr/www/users/smartucbmh/application/vendor/laravel/framework/src/Illuminate/Foundation/Console/Kernel.php(194): Illuminate\\Foundation\\Console\\Kernel->bootstrap()
+#9 /usr/www/users/smartucbmh/application/artisan(37): Illuminate\\Foundation\\Console\\Kernel->handle()
+#10 {main}
+"} 
+[2026-02-25 16:31:52] production.ERROR: Call to undefined method ReflectionFunction::isAnonymous() {"exception":"[object] (Error(code: 0): Call to undefined method ReflectionFunction::isAnonymous() at /usr/www/users/smartucbmh/application/vendor/laravel/framework/src/Illuminate/Container/Container.php:680)
+[stacktrace]
+#0 /usr/www/users/smartucbmh/application/vendor/laravel/framework/src/Illuminate/Container/Container.php(652): Illuminate\\Container\\Container->getClassForCallable()
+#1 /usr/www/users/smartucbmh/application/vendor/laravel/framework/src/Illuminate/Foundation/Application.php(1099): Illuminate\\Container\\Container->call()
+#2 /usr/www/users/smartucbmh/application/vendor/laravel/framework/src/Illuminate/Foundation/Application.php(1080): Illuminate\\Foundation\\Application->bootProvider()
+#3 [internal function]: Illuminate\\Foundation\\Application->Illuminate\\Foundation\\{closure}()
+#4 /usr/www/users/smartucbmh/application/vendor/laravel/framework/src/Illuminate/Foundation/Application.php(1081): array_walk()
+#5 /usr/www/users/smartucbmh/application/vendor/laravel/framework/src/Illuminate/Foundation/Bootstrap/BootProviders.php(17): Illuminate\\Foundation\\Application->boot()
+#6 /usr/www/users/smartucbmh/application/vendor/laravel/framework/src/Illuminate/Foundation/Application.php(309): Illuminate\\Foundation\\Bootstrap\\BootProviders->bootstrap()
+#7 /usr/www/users/smartucbmh/application/vendor/laravel/framework/src/Illuminate/Foundation/Console/Kernel.php(470): Illuminate\\Foundation\\Application->bootstrapWith()
+#8 /usr/www/users/smartucbmh/application/vendor/laravel/framework/src/Illuminate/Foundation/Console/Kernel.php(194): Illuminate\\Foundation\\Console\\Kernel->bootstrap()
+#9 /usr/www/users/smartucbmh/application/artisan(37): Illuminate\\Foundation\\Console\\Kernel->handle()
+#10 {main}
+"} 
+[2026-02-25 16:31:52] production.ERROR: Call to undefined method ReflectionFunction::isAnonymous() {"exception":"[object] (Error(code: 0): Call to undefined method ReflectionFunction::isAnonymous() at /usr/www/users/smartucbmh/application/vendor/laravel/framework/src/Illuminate/Container/Container.php:680)
+[stacktrace]
+#0 /usr/www/users/smartucbmh/application/vendor/laravel/framework/src/Illuminate/Container/Container.php(652): Illuminate\\Container\\Container->getClassForCallable()
+#1 /usr/www/users/smartucbmh/application/vendor/laravel/framework/src/Illuminate/Foundation/Application.php(1099): Illuminate\\Container\\Container->call()
+#2 /usr/www/users/smartucbmh/application/vendor/laravel/framework/src/Illuminate/Foundation/Application.php(1080): Illuminate\\Foundation\\Application->bootProvider()
+#3 [internal function]: Illuminate\\Foundation\\Application->Illuminate\\Foundation\\{closure}()
+#4 /usr/www/users/smartucbmh/application/vendor/laravel/framework/src/Illuminate/Foundation/Application.php(1081): array_walk()
+#5 /usr/www/users/smartucbmh/application/vendor/laravel/framework/src/Illuminate/Foundation/Bootstrap/BootProviders.php(17): Illuminate\\Foundation\\Application->boot()
+#6 /usr/www/users/smartucbmh/application/vendor/laravel/framework/src/Illuminate/Foundation/Application.php(309): Illuminate\\Foundation\\Bootstrap\\BootProviders->bootstrap()
+#7 /usr/www/users/smartucbmh/application/vendor/laravel/framework/src/Illuminate/Foundation/Console/Kernel.php(470): Illuminate\\Foundation\\Application->bootstrapWith()
+#8 /usr/www/users/smartucbmh/application/vendor/laravel/framework/src/Illuminate/Foundation/Console/Kernel.php(194): Illuminate\\Foundation\\Console\\Kernel->bootstrap()
+#9 /usr/www/users/smartucbmh/application/artisan(37): Illuminate\\Foundation\\Console\\Kernel->handle()
+#10 {main}
+"} 

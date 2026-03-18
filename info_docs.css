@@ -1,0 +1,585 @@
+/* Info Docs - Styles from Perfex CRM */
+
+/* Nav and Tabs */
+.info-docs-tab-wrapper .info-docs-nav-link {
+    padding: 14px 16px;
+    font-size: 14px;
+    border-radius: 10px 10px 0 0 !important;
+    margin-right: 3px;
+    transition-duration: .25s;
+    cursor: pointer;
+}
+
+.info-docs-tab-wrapper .info-docs-nav-link.active {
+    border-color: #ccc #ccc #fff !important;
+}
+
+.info-docs-tab-wrapper .info-docs-nav-link:hover {
+    border-color: #ccc #ccc #fff !important;
+}
+
+.info-docs-tab-wrapper .info-docs-tab-content {
+    background-color: #fff;
+    border: 1px solid #ccc;
+    border-radius: 0 5px 5px;
+    min-height: 600px;
+    padding: 15px;
+    border-top: none;
+}
+
+.info-docs-tab-wrapper .info-docs-nav-tabs {
+    border-color: #ccc;
+}
+
+/* Company summary column */
+.info-docs-tab-wrapper .company-summary {
+    margin: 15px 0 30px;
+}
+
+.info-docs-tab-wrapper .company-summary h3 {
+    font-size: 18px;
+    font-weight: 700;
+    margin-top: 8px;
+}
+
+.info-docs-tab-wrapper .company-summary h4 {
+    font-size: 18px;
+    font-weight: 700;
+    margin-top: 8px;
+}
+
+.info-docs-tab-wrapper .company-summary ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.info-docs-tab-wrapper .company-summary ul li {
+    padding-top: 10px;
+    border-top: 1px solid #ccc;
+}
+
+.info-docs-tab-wrapper .company-summary ul li p {
+    line-height: 1.4;
+    font-size: 14px;
+    color: #333;
+}
+
+/* Table styles for dashboard center */
+#documents-table th,
+#documents-table td {
+    padding: 4px 8px;
+    word-wrap: break-word;
+}
+
+/* Company Dashboard Starts */
+.info-docs-tab-wrapper .info-docs-subnav-tabs {
+    margin: 15px 0 30px;
+}
+
+.info-docs-tab-wrapper .info-docs-subnav-tabs .info-docs-tab-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.info-docs-tab-wrapper .info-docs-subnav-tabs .info-docs-tab-item {
+    border-top: none;
+    border-bottom: 1px solid #ccc;
+}
+
+.info-docs-tab-wrapper .info-docs-subnav-tabs .info-docs-tab-item a {
+    color: #000;
+    display: block;
+    padding: 3px 10px;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.info-docs-tab-wrapper .info-docs-subnav-tabs .info-docs-tab-item a:hover {
+    background-color: #f26d21;
+    color: #fff;
+}
+
+.info-docs-tab-wrapper .info-docs-subnav-tabs .info-docs-tab-item a.active {
+    background-color: #1496bb;
+    color: #fff;
+}
+
+/* Table Buttons */
+.table-icon-style {
+    color: #337ab7;
+    font-size: 18px;
+}
+
+/* Documents table */
+#documents-table {
+    table-layout: fixed;
+}
+
+#documents-table th,
+#documents-table td {
+    white-space: normal !important;
+    overflow-wrap: break-word;
+}
+
+/* DataTable Css End */
+.h3_class {
+    color: blue;
+    font-weight: 500 !important;
+}
+
+.info-docs-bg {
+    background: #0d3d56 !important;
+}
+
+/* Director Appointer Css */
+.form-modal .modal-header {
+    color: #fff;
+    background-color: #0d3d56;
+    border-radius: 10px 10px 0 0;
+    border-color: #0d3d56;
+    padding: 15px;
+    border-bottom: 1px solid #e5e5e5;
+}
+
+.form-modal .modal-title {
+    color: #fff
+}
+
+.form-modal .modal-content {
+    border-radius: 15px;
+    color: #000;
+}
+
+.info_docs-form .form-control {
+    color: #000;
+    border-color: #000;
+    height: 40px;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.375rem !important;
+}
+
+.info_docs-form .checkbox-label {
+    display: flex;
+    align-items: center;
+    color: #000000 !important;
+    gap: 3px;
+}
+
+.info_docs-form .form-check-input {
+    border-color: #000;
+}
+
+.bg-red {
+    background-color: #FC2E53 !important;
+}
+
+.swal2-container {
+    z-index: 99999 !important;
+}
+
+.breadcrumb-item::before {
+    font-size: 30px
+}
+
+.info-docs-tab-wrapper .company-summary h4 {
+    font-size: 18px;
+    font-weight: 700;
+    margin-top: 8px;
+}
+
+.info-docs-table .table-row.info-content .cell {
+    font-size: 18px;
+}
+
+#company-sub-tab .info-docs-tab-item {
+    font-size: 18px;
+    font-weight: 400;
+}
+
+/* Info Docs Table Styles */
+.info-docs-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+
+.info-docs-table .table-row {
+    display: flex;
+    border-bottom: 1px solid #ddd;
+}
+
+.info-docs-table .table-row.table-title {
+    background-color: #0d3d56;
+    color: #fff;
+    font-weight: bold;
+    padding: 10px 15px;
+}
+
+.info-docs-table .table-row.table-title .cell {
+    color: #fff;
+}
+
+.info-docs-table .table-row.info-content {
+    background-color: #fff;
+}
+
+.info-docs-table .table-row.info-content:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+.info-docs-table .cell {
+    flex: 1;
+    padding: 10px 15px;
+    display: flex;
+    align-items: center;
+}
+
+.info-docs-table .cell:first-child {
+    font-weight: 600;
+    max-width: 300px;
+    flex: 0 0 300px;
+}
+
+/* Actions buttons */
+.actions a.btn {
+    margin-bottom: 10px;
+}
+
+/* Key Dates table */
+#key-dates-table {
+    width: 100% !important;
+}
+
+/* Search section */
+.seach_by_btn {
+    min-width: 180px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .info-docs-table .table-row {
+        flex-direction: column;
+    }
+
+    .info-docs-table .cell:first-child {
+        max-width: 100%;
+        flex: none;
+        background-color: #f5f5f5;
+    }
+}
+
+/* ============================================
+   COPIED FROM PERFEX theme2/layout/master.php
+   ============================================ */
+
+/* Form control styling from Perfex theme2 */
+.form-control {
+    border-color: #17A2B8 !important;
+    height: 3.7rem;
+    font-size: 1.5rem !important;
+    color: #17A2B8 !important;
+}
+
+/* Bootstrap-select button styling from Perfex theme2 */
+.bootstrap-select .btn {
+    color: #17A2B8 !important;
+    border: 1px solid #17a2b8 !important;
+    font-size: 1.5rem !important;
+}
+
+/* Dropdown menu items from Perfex theme2 */
+.bootstrap-select .dropdown-menu li {
+    border-bottom: 2px solid #17a2b8;
+}
+
+.bootstrap-select .dropdown-menu li a {
+    color: #343a40 !important;
+}
+
+.bootstrap-select .dropdown-menu li a span.text {
+    font-size: 1.125rem !important;
+    font-weight: 400 !important;
+}
+
+.bootstrap-select .dropdown-menu li a:hover {
+    background: #17a2b81a !important;
+}
+
+/* Text green class from Perfex */
+.text-green {
+    color: #17A2B8 !important;
+}
+
+/* ============================================
+   SEARCH BY BUTTON CSS FROM PERFEX theme2
+   ============================================ */
+
+/* Dropdown item hover/active states for info-docs */
+.dropdown-item-info-docs {
+    font-size: 1.125rem !important;
+    padding: 0.75rem 1rem !important;
+}
+.dropdown-item-info-docs.active,
+.dropdown-item-info-docs:active,
+.dropdown-item-info-docs:hover {
+    color: #fff !important;
+    background-color: #17A2B8 !important;
+}
+
+/* Style the form-group for layout */
+.form-group {
+    margin-bottom: 15px;
+    position: relative;
+}
+
+/* Filter buttons font size */
+#activeClients, #inactiveClients, #allClients {
+    font-size: 1rem !important;
+}
+
+/* ============================================
+   ADDITIONAL CSS FROM PERFEX theme2/layout/master.php
+   ============================================ */
+
+/* Spin animation */
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+.spin {
+    animation: spin 1s linear infinite;
+}
+
+/* Datepicker styling */
+.dtp-content {
+    max-width: 400px !important;
+    max-height: 685px !important;
+}
+.dtp-picker-days td {
+    padding: 0.6em !important;
+    font-weight: 500 !important;
+    font-size: .75rem !important;
+}
+.dtp-picker-days td a {
+    height: 2.4rem !important;
+    width: 2.4rem !important;
+    font-size: 16px !important;
+}
+.dtp-picker-days td a.selected {
+    background-color: #17a2b8 !important;
+}
+.dtp-date {
+    background-color: #17a2b8 !important;
+}
+.dtp-header {
+    background-color: #062a30 !important;
+}
+.dtp-select-month-before .material-icons,
+.dtp-select-month-after .material-icons,
+.dtp-select-year-before .material-icons,
+.dtp-select-year-after .material-icons,
+.dtp-actual-year {
+    color: #fff !important;
+}
+
+.datepicker {
+    height: 3.7rem;
+    padding-left: 9px !important;
+}
+
+/* Close button */
+.close-btn {
+    color: #ccc;
+    text-shadow: none;
+    margin-top: 0;
+    opacity: 1;
+    -webkit-appearance: none;
+    padding: 0;
+    cursor: pointer;
+    background: 0 0;
+    border: 0;
+    float: right;
+    font-size: 21px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+/* Parsley validation errors */
+.parsley-errors-list {
+    margin-top: 5px;
+    padding: 0;
+    list-style: none;
+    display: none;
+}
+.parsley-errors-list.filled {
+    display: block;
+}
+.parsley-errors-list li {
+    color: red;
+    background-color: #ffcccc;
+    padding: 5px;
+    border: 1px solid red;
+    border-radius: 3px;
+}
+
+/* Label formatting */
+.label-master {
+    font-size: 16px !important;
+    color: #000 !important;
+    font-weight: 700 !important;
+    margin-left: 12px !important;
+    font-family: 'poppins', sans-serif !important;
+}
+
+/* Card header */
+.card-header > h3 {
+    color: #fff !important;
+}
+
+/* Info docs table from Perfex master.php */
+.info-docs-table {
+    border-collapse: collapse;
+    display: table;
+    margin: 15px 0 30px;
+    width: 100%;
+    max-width: 100%;
+    table-layout: fixed;
+}
+.info-docs-table .table-row {
+    transition: .1s;
+    display: table-row;
+}
+.info-docs-table .cell {
+    display: table-cell;
+    padding: 6px 12px;
+}
+.info-docs-table .table-row.table-title {
+    background: #0d3d56;
+    caption-side: top;
+    color: #fff;
+    display: table-caption;
+    font-weight: 700;
+    border-radius: 5px 5px 0 0;
+}
+.info-docs-table .table-row.table-title .cell {
+    font-size: 16px;
+    font-weight: 600;
+}
+.info-docs-table .table-row.table-header {
+    background: #1496bb;
+    border: 1px solid #1496bb;
+    color: #fff;
+}
+.info-docs-table .table-row.table-header.table-header-past {
+    background: #FC2E53;
+    border: 1px solid #FC2E53;
+    color: #fff;
+}
+.info-docs-table .table-row.table-header .cell {
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 18px;
+    padding: 2px 12px;
+    color: #fff !important;
+}
+.info-docs-table .table-row.table-content {
+    border: 1px solid #ccc;
+    border-left: none;
+    border-right: none;
+}
+.info-docs-table .table-row.table-content .cell {
+    border-left: none;
+    border-right: none;
+    vertical-align: middle;
+    color: #333;
+    font-size: 14px;
+    font-weight: 400;
+}
+.info-docs-table .table-row.info-content {
+    border: 1px solid #ccc;
+    border-left: none;
+    border-right: none;
+}
+.info-docs-table .table-row.info-content .cell:first-of-type {
+    font-weight: 700;
+}
+.info-docs-table .table-row.info-content .cell {
+    border-left: none;
+    border-right: none;
+    vertical-align: middle;
+    color: #333;
+    font-size: 14px;
+    font-weight: 400;
+}
+.info-docs-table .table-row.table-content .date {
+    white-space: nowrap;
+}
+.info-docs-table .refresh {
+    color: #ccc;
+    background-color: #0d3d56;
+    border: none;
+    border-radius: 5px;
+    padding: 6px 12px;
+    float: right;
+}
+.info-docs-table .refresh i {
+    font-size: 18px;
+}
+.font_set_btn {
+    font-size: 14px;
+    font-weight: 600;
+}
+.info-docs-table .actions {
+    margin: 15px 0 30px;
+}
+.info-docs-table .actions h3 {
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin-bottom: 1rem;
+}
+.info-docs-table .actions .btn {
+    width: 100%;
+    margin-bottom: 0.5rem;
+}
+
+/* DataTable CSS */
+.dataTables_paginate {
+    display: flex;
+    justify-content: end;
+}
+.dataTables_paginate ul {
+    margin-bottom: 0px;
+    padding: 8px 12px;
+}
+.dataTables_scroll {
+    padding: 0 !important;
+    width: 100% !important;
+}
+.dataTables_scrollHeadInner {
+    padding-right: 0 !important;
+    margin-right: 0 !important;
+    width: 100% !important;
+}
+.dataTables_scrollHeadInner > table {
+    width: 100% !important;
+    min-width: 0 !important;
+}
+.dataTables_scrollHead,
+.dataTables_scrollBody {
+    margin: 0;
+    padding: 0;
+    width: 100% !important;
+}
+.dataTables_scrollHeadInner > table,
+.dataTables_scrollBody > table {
+    min-width: 0 !important;
+    width: 100% !important;
+}
+.dataTables_length {
+    float: left;
+}
+.dataTables_filter {
+    float: right;
+}

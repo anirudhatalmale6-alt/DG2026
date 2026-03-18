@@ -1,0 +1,3694 @@
+=== SARS STATEMENT CODE DEEP-DIVE ===
+Date: 2026-03-06 02:50:20
+
+
+================================================================================
+FILE: CIMS_EMP201/Http/Controllers/Emp201Controller.php
+================================================================================
+Size: 74022 bytes
+[LARGE FILE - showing statement/pdf related sections only]
+
+L1: <?php
+L2: 
+L3: namespace Modules\CIMS_EMP201\Http\Controllers;
+L4: 
+L5: use App\Http\Controllers\Controller;
+L6: use Illuminate\Http\Request;
+L7: use Modules\CIMS_EMP201\Models\Emp201Declaration;
+L8: use Modules\cims_pm_pro\Models\Document;
+L9: use Illuminate\Support\Facades\DB;
+L10: use Illuminate\Support\Facades\Mail;
+L11: use Illuminate\Support\Facades\Auth;
+L12: use Barryvdh\DomPDF\Facade\Pdf;
+L13: use PhpOffice\PhpSpreadsheet\Spreadsheet;
+L14: use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+L15: use PhpOffice\PhpSpreadsheet\Style\Alignment;
+L16: use PhpOffice\PhpSpreadsheet\Style\Border;
+L17: use PhpOffice\PhpSpreadsheet\Style\Fill;
+L18: use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
+L19: 
+L20: class Emp201Controller extends Controller
+...
+
+L644:     public function statement(Request $request)
+L645:     {
+L646:         $clients = DB::table('client_master')
+L647:             ->where('is_active', 1)
+L648:             ->orderBy('company_name')
+L649:             ->get(['client_id', 'client_code', 'company_name']);
+L650: 
+L651:         $taxYears = DB::table('cims_document_periods')
+L652:             ->where('is_active', 1)
+L653:             ->whereNotNull('tax_year')
+L654:             ->select('tax_year')
+L655:             ->distinct()
+L656:             ->orderBy('tax_year', 'desc')
+L657:             ->pluck('tax_year');
+L658: 
+L659:         return view('cims_emp201::emp201.statement', compact('clients', 'taxYears'));
+L660:     }
+
+L666:     public function apiStatementData(Request $request)
+L667:     {
+L668:         $clientId = $request->get('client_id');
+L669:         $taxYear  = $request->get('tax_year');
+L670: 
+L671:         if (!$clientId || !$taxYear) {
+L672:             return response()->json(['error' => 'Client and tax year required'], 400);
+L673:         }
+L674: 
+L675:         // Get client info
+L676:         $client = DB::table('client_master')->where('client_id', $clientId)->first();
+L677:         if (!$client) {
+L678:             return response()->json(['error' => 'Client not found'], 404);
+L679:         }
+L680: 
+L681:         // Get client address - prioritise Registered, then fallback to any other
+L682:         $address = null;
+L683:         $addrLink = DB::table('client_master_addresses')
+L684:             ->where('client_id', $clientId)
+L685:             ->where('address_type', 'Registered')
+L686:             ->first();
+L687:         if (!$addrLink) {
+L688:             // Fallback: try any other address for this client
+L689:             $addrLink = DB::table('client_master_addresses')
+L690:                 ->where('client_id', $clientId)
+L691:                 ->whereNotNull('address_id')
+L692:                 ->first();
+L693:         }
+L694:         if ($addrLink && $addrLink->address_id) {
+L695:             $address = DB::table('cims_addresses')
+L696:                 ->where('id', $addrLink->address_id)
+L697:                 ->first();
+L698:         }
+L699: 
+L700:         // SA payroll tax year months (March to February)
+L701:         $prevYear = $taxYear - 1;
+L702:         $months = [
+L703:             ['month' => 3,  'label' => 'March',     'combo' => sprintf('%04d%02d', $taxYear, 1),  'year' => $prevYear, 'cal' => sprintf('%04d/%02d', $prevYear, 3)],
+L704:             ['month' => 4,  'label' => 'April',     'combo' => sprintf('%04d%02d', $taxYear, 2),  'year' => $prevYear, 'cal' => sprintf('%04d/%02d', $prevYear, 4)],
+L705:             ['month' => 5,  'label' => 'May',       'combo' => sprintf('%04d%02d', $taxYear, 3),  'year' => $prevYear, 'cal' => sprintf('%04d/%02d', $prevYear, 5)],
+L706:             ['month' => 6,  'label' => 'June',      'combo' => sprintf('%04d%02d', $taxYear, 4),  'year' => $prevYear, 'cal' => sprintf('%04d/%02d', $prevYear, 6)],
+L707:             ['month' => 7,  'label' => 'July',      'combo' => sprintf('%04d%02d', $taxYear, 5),  'year' => $prevYear, 'cal' => sprintf('%04d/%02d', $prevYear, 7)],
+L708:             ['month' => 8,  'label' => 'August',    'combo' => sprintf('%04d%02d', $taxYear, 6),  'year' => $prevYear, 'cal' => sprintf('%04d/%02d', $prevYear, 8)],
+L709:             ['month' => 9,  'label' => 'September', 'combo' => sprintf('%04d%02d', $taxYear, 7),  'year' => $prevYear, 'cal' => sprintf('%04d/%02d', $prevYear, 9)],
+L710:             ['month' => 10, 'label' => 'October',   'combo' => sprintf('%04d%02d', $taxYear, 8),  'year' => $prevYear, 'cal' => sprintf('%04d/%02d', $prevYear, 10)],
+L711:             ['month' => 11, 'label' => 'November',  'combo' => sprintf('%04d%02d', $taxYear, 9),  'year' => $prevYear, 'cal' => sprintf('%04d/%02d', $prevYear, 11)],
+L712:             ['month' => 12, 'label' => 'December',  'combo' => sprintf('%04d%02d', $taxYear, 10), 'year' => $prevYear, 'cal' => sprintf('%04d/%02d', $prevYear, 12)],
+L713:             ['month' => 1,  'label' => 'January',   'combo' => sprintf('%04d%02d', $taxYear, 11), 'year' => (int)$taxYear, 'cal' => sprintf('%04d/%02d', $taxYear, 1)],
+L714:             ['month' => 2,  'label' => 'February',  'combo' => sprintf('%04d%02d', $taxYear, 12), 'year' => (int)$taxYear, 'cal' => sprintf('%04d/%02d', $taxYear, 2)],
+L715:         ];
+L716: 
+L717:         // Get all declarations for this client and tax year
+L718:         $declarations = Emp201Declaration::where('client_id', $clientId)
+L719:             ->where('financial_year', $taxYear)
+L720:             ->get()
+L721:             ->keyBy('period_combo');
+L722: 
+L723:         // Also check previous year for balance brought forward
+L724:         $prevYearDeclarations = Emp201Declaration::where('client_id', $clientId)
+L725:             ->where('financial_year', $prevYear)
+L726:             ->get();
+L727:         $prevYearBalance = $prevYearDeclarations->sum('tax_payable') - $prevYearDeclarations->sum('amount_paid');
+L728: 
+L729:         // Build period transaction data
+L730:         $periods = [];
+L731:         $totalPaye = 0;
+L732:         $totalSdl = 0;
+L733:         $totalUif = 0;
+L734:         $totalOther = 0;
+L735:         $totalBalance = 0;
+L736: 
+L737:         foreach ($months as $m) {
+L738:             $decl = $declarations->get($m['combo']);
+L739: 
+L740:             if (!$decl) {
+L741:                 // No declaration for this period - skip
+L742:                 continue;
+L743:             }
+L744: 
+L745:             $periodLabel = $m['combo']; // e.g. 202601
+L746:             $calDate = $m['cal'];       // e.g. 2025/03
+L747:             $txns = [];
+L748: 
+L749:             // 1. DECLARATION row
+L750:             $declPaye = (float)($decl->paye_payable ?? 0);
+L751:             $declSdl  = (float)($decl->sdl_payable ?? 0);
+L752:             $declUif  = (float)($decl->uif_payable ?? 0);
+L753:             $declTotal = $declPaye + $declSdl + $declUif;
+L754:             $txns[] = [
+L755:                 'type'        => 'declaration',
+L756:                 'date'        => $calDate . '/07',
+L757:                 'reference'   => ($client->paye_number ?? '') . 'LC' . $periodLabel,
+L758:                 'description' => 'DECLARATION',
+L759:                 'value'       => $declTotal,
+L760:                 'paye'        => $declPaye,
+L761:                 'sdl'         => $declSdl,
+L762:                 'uif'         => $declUif,
+L763:                 'other'       => 0,
+L764:                 'balance'     => $declTotal,
+L765:             ];
+L766: 
+L767:             $runBalance = $declTotal;
+L768: 
+L769:             // 2. PENALTIES AND INTEREST row (if any)
+L770:             $penaltyInterest = (float)($decl->penalty_interest ?? 0);
+L771:             if ($penaltyInterest != 0) {
+L772:                 $runBalance += $penaltyInterest;
+L773:                 $txns[] = [
+L774:                     'type'        => 'penalty_interest',
+L775:                     'date'        => $calDate . '/08',
+L776:                     'reference'   => '',
+L777:                     'description' => 'PENALTIES AND INTEREST',
+L778:                     'value'       => $penaltyInterest,
+L779:                     'paye'        => 0,
+L780:                     'sdl'         => 0,
+L781:                     'uif'         => 0,
+L782:                     'other'       => $penaltyInterest,
+L783:                     'balance'     => $runBalance,
+L784:                 ];
+L785:             }
+L786: 
+L787:             // 4. PAYMENT row (if amount_paid > 0)
+L788:             $paid = (float)($decl->amount_paid ?? $decl->payment_amount ?? 0);
+L789:             if ($paid != 0) {
+L790:                 $payRef = $decl->payment_ref_no ?? $decl->payment_reference ?? '';
+L791:                 $payDate = $decl->payment_date ? date('Y/m/d', strtotime($decl->payment_date)) : ($calDate . '/25');
+L792:                 $runBalance -= $paid;
+L793:                 $txns[] = [
+L794:                     'type'        => 'payment',
+L795:                     'date'        => $payDate,
+L796:                     'reference'   => ($client->paye_number ?? '') . ($payRef ? 'LX' . $payRef : ''),
+L797:                     'description' => 'PAYMENT (RECEIPT NO.' . ($payRef ?: 'N/A') . ')',
+L798:                     'value'       => -$paid,
+L799:                     'paye'        => -$paid,
+L800:                     'sdl'         => 0,
+L801:                     'uif'         => 0,
+L802:                     'other'       => 0,
+L803:                     'balance'     => $runBalance,
+L804:                 ];
+L805:             }
+L806: 
+L807:             // 5. ADJUSTMENT row (if 'other' field > 0)
+L808:             $other = (float)($decl->other ?? 0);
+L809:             if ($other != 0) {
+L810:                 $runBalance += $other;
+L811:                 $txns[] = [
+L812:                     'type'        => 'adjustment',
+L813:                     'date'        => '',
+L814:                     'reference'   => '',
+L815:                     'description' => 'ADJUSTMENT',
+L816:                     'value'       => $other,
+L817:                     'paye'        => $other,
+L818:                     'sdl'         => 0,
+L819:                     'uif'         => 0,
+L820:                     'other'       => 0,
+L821:                     'balance'     => $runBalance,
+L822:                 ];
+L823:             }
+L824: 
+L825:             // 6. TOTAL LIABILITY row
+L826:             $totalLiability = $declTotal + $penaltyInterest + $other;
+L827:             $txns[] = [
+L828:                 'type'        => 'total_liability',
+L829:                 'date'        => '',
+L830:                 'reference'   => '',
+L831:                 'description' => 'TOTAL LIABILITY',
+L832:                 'value'       => $totalLiability,
+L833:                 'paye'        => $declPaye,
+L834:                 'sdl'         => $declSdl,
+L835:                 'uif'         => $declUif,
+L836:                 'other'       => $penaltyInterest,
+L837:                 'balance'     => 0,
+L838:             ];
+L839: 
+L840:             // 7. FINANCIAL MOVEMENT row
+L841:             $financialMovement = -($paid ?: 0);
+L842:             $txns[] = [
+L843:                 'type'        => 'financial_movement',
+L844:                 'date'        => '',
+L845:                 'reference'   => '',
+L846:                 'description' => 'FINANCIAL MOVEMENT',
+L847:                 'value'       => $financialMovement,
+L848:                 'paye'        => 0,
+L849:                 'sdl'         => 0,
+L850:                 'uif'         => 0,
+L851:                 'other'       => 0,
+L852:                 'balance'     => 0,
+L853:             ];
+L854: 
+L855:             // Period balance
+L856:             $balPaye  = $declPaye - ($paid > 0 ? $paid : 0);
+L857:             $balSdl   = $declSdl;
+L858:             $balUif   = $declUif;
+L859:             $balOther = $penaltyInterest;
+L860:             $balTotal = $runBalance;
+L861: 
+L862:             $totalPaye  += $balPaye;
+L863:             $totalSdl   += $balSdl;
+L864:             $totalUif   += $balUif;
+L865:             $totalOther += $balOther;
+L866:             $totalBalance += $balTotal;
+L867: 
+L868:             $periods[] = [
+L869:                 'period_label'   => $periodLabel,
+L870:                 'month_label'    => $m['label'] . ' ' . $m['year'],
+L871:                 'transactions'   => $txns,
+L872:                 'balance_paye'   => round($balPaye, 2),
+L873:                 'balance_sdl'    => round($balSdl, 2),
+L874:                 'balance_uif'    => round($balUif, 2),
+L875:                 'balance_other'  => round($balOther, 2),
+L876:                 'balance_total'  => round($balTotal, 2),
+L877:             ];
+L878:         }
+L879: 
+L880:         // Current year balance
+L881:         $currentYearBalance = $totalBalance;
+L882: 
+L883:         // Aging calculation (simplified)
+L884:         // Put all balance in 120+ days bucket for now since this is historical data
+L885:         $aging = [
+L886:             'current' => 0,
+L887:             'days30'  => 0,
+L888:             'days60'  => 0,
+L889:             'days90'  => 0,
+L890:             'days120' => round($currentYearBalance + $prevYearBalance, 2),
+L891:             'total'   => round($currentYearBalance + $prevYearBalance, 2),
+L892:         ];
+L893: 
+L894:         // Outstanding EMP201 - count periods without declarations
+L895:         $declaredCombos = $declarations->keys()->toArray();
+L896:         $allCombos = array_column($months, 'combo');
+L897:         $outstandingPeriods = array_diff($allCombos, $declaredCombos);
+L898:         $outstandingLabels = [];
+L899:         foreach ($months as $m) {
+L900:             if (in_array($m['combo'], $outstandingPeriods)) {
+L901:                 $outstandingLabels[] = $m['label'] . ' ' . $m['year'];
+L902:             }
+L903:         }
+L904: 
+L905:         return response()->json([
+L906:             'client' => [
+L907:                 'company_name'     => $client->company_name ?? '',
+L908:                 'trading_name'     => $client->trading_name ?? '',
+L909:                 'client_code'      => $client->client_code ?? '',
+L910:                 'company_number'   => $client->company_reg_number ?? '',
+L911:                 'email'            => $client->email ?? '',
+L912:                 'paye_number'      => $client->paye_number ?? '',
+L913:                 'sdl_number'       => $client->sdl_number ?? '',
+L914:                 'uif_number'       => $client->uif_number ?? '',
+L915:                 'vat_number'       => $client->vat_number ?? '',
+L916:                 'income_tax_number'=> $client->tax_number ?? '',
+L917:                 'tax_reg_date'     => $client->tax_reg_date ?? '',
+L918:                 'address'          => $address ? [
+L919:                     'street_number' => $address->street_number ?? '',
+L920:                     'street_name'   => $address->street_name ?? '',
+L921:                     'suburb'        => $address->suburb ?? '',
+L922:                     'city'          => $address->city ?? '',
+L923:                     'province'      => $address->province ?? '',
+L924:                     'postal_code'   => $address->postal_code ?? '',
+L925:                 ] : null,
+L926:             ],
+L927:             'tax_year'    => $taxYear,
+L928:             'today'       => now()->format('Y/m/d'),
+L929:             'periods'     => $periods,
+L930:             'summary'     => [
+L931:                 'prev_year_balance'    => round($prevYearBalance, 2),
+L932:                 'current_year_balance' => round($currentYearBalance, 2),
+L933:                 'closing_balance'      => round($prevYearBalance + $currentYearBalance, 2),
+L934:             ],
+L935:             'aging'       => $aging,
+L936:             'compliance'  => [
+L937:                 'outstanding_emp201' => count($outstandingLabels) > 0 ? implode(', ', $outstandingLabels) : 'None',
+L938:             ],
+L939:         ]);
+L940:     }
+
+L945:     public function exportStatementExcel(Request $request)
+L946:     {
+L947:         $clientId = $request->get('client_id');
+L948:         $taxYear  = $request->get('tax_year');
+L949: 
+L950:         if (!$clientId || !$taxYear) {
+L951:             return redirect()->back()->with('error', 'Client and tax year required.');
+L952:         }
+L953: 
+L954:         // Re-use apiStatementData to get the data
+L955:         $response = $this->apiStatementData($request);
+L956:         $data = json_decode($response->getContent(), true);
+L957: 
+L958:         $client = $data['client'];
+L959:         $periods = $data['periods'];
+L960:         $summary = $data['summary'];
+L961:         $aging = $data['aging'];
+L962: 
+L963:         // Create spreadsheet
+L964:         $spreadsheet = new Spreadsheet();
+L965:         $sheet = $spreadsheet->getActiveSheet();
+L966:         $sheet->setTitle('Statement of Account');
+L967: 
+L968:         // Colors
+L969:         $darkBlue = '003366';
+L970:         $white    = 'FFFFFF';
+L971:         $lightBg  = 'E8EEF4';
+L972:         $cumBg    = 'D4E5F7';
+L973: 
+L974:         // --- HEADER ---
+L975:         $sheet->mergeCells('A1:H1');
+L976:         $sheet->setCellValue('A1', 'SARS - EMPLOYMENT TAXES - Statement of Account (EMPSA)');
+L977:         $sheet->getStyle('A1')->applyFromArray([
+L978:             'font' => ['bold' => true, 'size' => 14, 'color' => ['argb' => $white]],
+L979:             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => $darkBlue]],
+L980:             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+L981:         ]);
+L982:         $sheet->getRowDimension(1)->setRowHeight(30);
+L983: 
+L984:         // --- CLIENT INFO ---
+L985:         $sheet->setCellValue('A3', 'Client:');
+L986:         $sheet->setCellValue('B3', $client['company_name']);
+L987:         $sheet->setCellValue('A4', 'PAYE Reference:');
+L988:         $sheet->setCellValue('B4', $client['paye_number']);
+L989:         $sheet->setCellValue('A5', 'Tax Year:');
+L990:         $sheet->setCellValue('B5', $taxYear);
+L991:         $sheet->setCellValue('A6', 'Statement Period:');
+L992:         $prevYear = $taxYear - 1;
+L993:         $sheet->setCellValue('B6', $prevYear . '/03/01 to ' . $taxYear . '/02/28');
+L994:         $sheet->getStyle('A3:A6')->getFont()->setBold(true)->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color($darkBlue));
+L995: 
+L996:         // --- SUMMARY ---
+L997:         $row = 8;
+L998:         $sheet->mergeCells("A{$row}:H{$row}");
+L999:         $sheet->setCellValue("A{$row}", 'Summary Information: Employer Reconciliation');
+L1000:         $sheet->getStyle("A{$row}")->applyFromArray([
+L1001:             'font' => ['bold' => true, 'size' => 11, 'color' => ['argb' => $white]],
+L1002:             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => $darkBlue]],
+L1003:         ]);
+L1004:         $row++;
+L1005:         $sheet->setCellValue("A{$row}", 'PAYE/SDL/UIF YEAR ' . $prevYear);
+L1006:         $sheet->setCellValue("H{$row}", $summary['prev_year_balance']);
+L1007:         $sheet->getStyle("H{$row}")->getNumberFormat()->setFormatCode('#,##0.00');
+L1008:         $row++;
+L1009:         $sheet->setCellValue("A{$row}", 'PAYE/SDL/UIF YEAR ' . $taxYear);
+L1010:         $sheet->setCellValue("H{$row}", $summary['current_year_balance']);
+L1011:         $sheet->getStyle("H{$row}")->getNumberFormat()->setFormatCode('#,##0.00');
+L1012:         $row++;
+L1013:         $sheet->setCellValue("A{$row}", 'CLOSING BALANCE');
+L1014:         $sheet->setCellValue("H{$row}", $summary['closing_balance']);
+L1015:         $sheet->getStyle("A{$row}:H{$row}")->applyFromArray([
+L1016:             'font' => ['bold' => true, 'color' => ['argb' => $darkBlue]],
+L1017:             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => $lightBg]],
+L1018:             'borders' => ['top' => ['borderStyle' => Border::BORDER_MEDIUM, 'color' => ['argb' => $darkBlue]]],
+L1019:         ]);
+L1020:         $sheet->getStyle("H{$row}")->getNumberFormat()->setFormatCode('#,##0.00');
+L1021: 
+L1022:         // --- TRANSACTION HEADER ---
+L1023:         $row += 2;
+L1024:         $headers = ['Date', 'Transaction Reference', 'Transaction Description', 'Transaction Value', 'PAYE', 'SDL', 'UIF', 'Account Balance'];
+L1025:         foreach ($headers as $i => $h) {
+L1026:             $col = $i + 1;
+L1027:             $sheet->setCellValueByColumnAndRow($col, $row, $h);
+L1028:         }
+L1029:         $hdrRange = "A{$row}:H{$row}";
+L1030:         $sheet->getStyle($hdrRange)->applyFromArray([
+L1031:             'font' => ['bold' => true, 'size' => 10, 'color' => ['argb' => $white]],
+L1032:             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => $darkBlue]],
+L1033:             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'wrapText' => true],
+L1034:             'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => '002244']]],
+L1035:         ]);
+L1036:         $sheet->getRowDimension($row)->setRowHeight(24);
+L1037: 
+L1038:         // --- TRANSACTION DATA ---
+L1039:         $row++;
+L1040:         $cumulativePaye = 0; $cumulativeSdl = 0; $cumulativeUif = 0; $cumulativeBalance = 0;
+L1041: 
+L1042:         foreach ($periods as $period) {
+L1043:             foreach ($period['transactions'] as $txn) {
+L1044:                 $sheet->setCellValueByColumnAndRow(1, $row, $txn['date'] ?? '');
+L1045:                 $sheet->setCellValueByColumnAndRow(2, $row, $txn['reference'] ?? '');
+L1046:                 $sheet->setCellValueByColumnAndRow(3, $row, $txn['description'] ?? '');
+L1047:                 $sheet->setCellValueByColumnAndRow(4, $row, $txn['value']);
+L1048:                 $sheet->setCellValueByColumnAndRow(5, $row, $txn['paye']);
+L1049:                 $sheet->setCellValueByColumnAndRow(6, $row, $txn['sdl']);
+L1050:                 $sheet->setCellValueByColumnAndRow(7, $row, $txn['uif']);
+L1051:                 $sheet->setCellValueByColumnAndRow(8, $row, $txn['balance']);
+L1052: 
+L1053:                 $sheet->getStyle("D{$row}:H{$row}")->getNumberFormat()->setFormatCode('#,##0.00');
+L1054:                 $sheet->getStyle("A{$row}:H{$row}")->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN)->getColor()->setARGB('DEE2E6');
+L1055:                 $row++;
+L1056:             }
+L1057: 
+L1058:             // Period balance row
+L1059:             $sheet->mergeCells("A{$row}:D{$row}");
+L1060:             $sheet->setCellValueByColumnAndRow(1, $row, 'BALANCE: TAX PERIOD ' . $period['period_label']);
+L1061:             $sheet->setCellValueByColumnAndRow(5, $row, $period['balance_paye']);
+L1062:             $sheet->setCellValueByColumnAndRow(6, $row, $period['balance_sdl']);
+L1063:             $sheet->setCellValueByColumnAndRow(7, $row, $period['balance_uif']);
+L1064:             $sheet->setCellValueByColumnAndRow(8, $row, $period['balance_total']);
+L1065:             $sheet->getStyle("A{$row}:H{$row}")->applyFromArray([
+L1066:                 'font' => ['bold' => true, 'color' => ['argb' => $darkBlue]],
+L1067:                 'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => $lightBg]],
+L1068:                 'borders' => [
+L1069:                     'top' => ['borderStyle' => Border::BORDER_MEDIUM, 'color' => ['argb' => $darkBlue]],
+L1070:                     'bottom' => ['borderStyle' => Border::BORDER_MEDIUM, 'color' => ['argb' => $darkBlue]],
+L1071:                 ],
+L1072:             ]);
+L1073:             $sheet->getStyle("E{$row}:H{$row}")->getNumberFormat()->setFormatCode('#,##0.00');
+L1074: 
+L1075:             $cumulativePaye += $period['balance_paye'];
+L1076:             $cumulativeSdl += $period['balance_sdl'];
+L1077:             $cumulativeUif += $period['balance_uif'];
+L1078:             $cumulativeBalance += $period['balance_total'];
+L1079:             $row++;
+L1080:         }
+L1081: 
+L1082:         // Cumulative balance row
+L1083:         $sheet->mergeCells("A{$row}:D{$row}");
+L1084:         $sheet->setCellValueByColumnAndRow(1, $row, 'CUMULATIVE BALANCE');
+L1085:         $sheet->setCellValueByColumnAndRow(5, $row, round($cumulativePaye, 2));
+L1086:         $sheet->setCellValueByColumnAndRow(6, $row, round($cumulativeSdl, 2));
+L1087:         $sheet->setCellValueByColumnAndRow(7, $row, round($cumulativeUif, 2));
+L1088:         $sheet->setCellValueByColumnAndRow(8, $row, round($cumulativeBalance, 2));
+L1089:         $sheet->getStyle("A{$row}:H{$row}")->applyFromArray([
+L1090:             'font' => ['bold' => true, 'size' => 11, 'color' => ['argb' => $darkBlue]],
+L1091:             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => $cumBg]],
+L1092:             'borders' => ['top' => ['borderStyle' => Border::BORDER_THICK, 'color' => ['argb' => $darkBlue]]],
+L1093:         ]);
+L1094:         $sheet->getStyle("E{$row}:H{$row}")->getNumberFormat()->setFormatCode('#,##0.00');
+L1095: 
+L1096:         // --- AGING ---
+L1097:         $row += 2;
+L1098:         $sheet->mergeCells("A{$row}:H{$row}");
+L1099:         $sheet->setCellValue("A{$row}", 'Ageing');
+L1100:         $sheet->getStyle("A{$row}")->applyFromArray([
+L1101:             'font' => ['bold' => true, 'color' => ['argb' => $white]],
+L1102:             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => $darkBlue]],
+L1103:         ]);
+L1104:         $row++;
+L1105:         $agingHeaders = ['Current', '30 Days', '60 Days', '90 Days', '120 Days', 'Total'];
+L1106:         foreach ($agingHeaders as $i => $h) {
+L1107:             $sheet->setCellValueByColumnAndRow($i + 1, $row, $h);
+L1108:         }
+L1109:         $sheet->getStyle("A{$row}:F{$row}")->applyFromArray([
+L1110:             'font' => ['bold' => true],
+L1111:             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => $lightBg]],
+L1112:         ]);
+L1113:         $row++;
+L1114:         $sheet->setCellValueByColumnAndRow(1, $row, $aging['current']);
+L1115:         $sheet->setCellValueByColumnAndRow(2, $row, $aging['days30']);
+L1116:         $sheet->setCellValueByColumnAndRow(3, $row, $aging['days60']);
+L1117:         $sheet->setCellValueByColumnAndRow(4, $row, $aging['days90']);
+L1118:         $sheet->setCellValueByColumnAndRow(5, $row, $aging['days120']);
+L1119:         $sheet->setCellValueByColumnAndRow(6, $row, $aging['total']);
+L1120:         $sheet->getStyle("A{$row}:F{$row}")->getNumberFormat()->setFormatCode('#,##0.00');
+L1121: 
+L1122:         // --- COLUMN WIDTHS ---
+L1123:         $sheet->getColumnDimension('A')->setWidth(14);
+L1124:         $sheet->getColumnDimension('B')->setWidth(22);
+L1125:         $sheet->getColumnDimension('C')->setWidth(30);
+L1126:         $sheet->getColumnDimension('D')->setWidth(16);
+L1127:         $sheet->getColumnDimension('E')->setWidth(14);
+L1128:         $sheet->getColumnDimension('F')->setWidth(14);
+L1129:         $sheet->getColumnDimension('G')->setWidth(14);
+L1130:         $sheet->getColumnDimension('H')->setWidth(16);
+L1131: 
+L1132:         // --- OUTPUT ---
+L1133:         $clientCode = $client['client_code'] ?: 'EMPSA';
+L1134:         $filename = 'EMPSA_Statement_' . $clientCode . '_' . $taxYear . '.xlsx';
+L1135: 
+L1136:         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+L1137:         header('Content-Disposition: attachment; filename="' . $filename . '"');
+L1138:         header('Cache-Control: max-age=0');
+L1139: 
+L1140:         $writer = new Xlsx($spreadsheet);
+L1141:         $writer->save('php://output');
+L1142:         exit;
+L1143:     }
+
+L1149:     private function generateAndStoreStatementPdf($clientId, $taxYear)
+L1150:     {
+L1151:         // Get statement data using the same method as the API
+L1152:         $fakeRequest = new Request(['client_id' => $clientId, 'tax_year' => $taxYear]);
+L1153:         $response = $this->apiStatementData($fakeRequest);
+L1154:         $data = json_decode($response->getContent(), true);
+L1155:         $client = $data['client'];
+L1156:         $clientCode = $client['client_code'] ?: 'EMPSA';
+L1157: 
+L1158:         // Generate PDF using DomPDF with table-based template
+L1159:         $pdf = Pdf::loadView('cims_emp201::emp201.statement_pdf', ['data' => $data]);
+L1160:         $pdf->setPaper('a4', 'portrait');
+L1161:         $pdfContent = $pdf->output();
+L1162: 
+L1163:         // Generate stored filename using same convention as Client Master
+L1164:         $docType = 'EMPSA - Statement of Account';
+L1165:         $storedFilename = Document::generateStoredFilename($clientCode, $docType, 'pdf');
+L1166: 
+L1167:         // Save to document storage: client_master_docs/{CLIENT_CODE}/
+L1168:         // base_path('../storage/') resolves to public_html/storage/ on this server
+L1169:         $storagePath = 'client_master_docs/' . $clientCode;
+L1170:         $fullDir = base_path('../storage/' . $storagePath);
+L1171:         if (!is_dir($fullDir)) {
+L1172:             mkdir($fullDir, 0755, true);
+L1173:         }
+L1174:         $fullFilePath = $fullDir . '/' . $storedFilename;
+L1175:         file_put_contents($fullFilePath, $pdfContent);
+L1176:         $fileSize = strlen($pdfContent);
+L1177: 
+L1178:         // Create document record in cims_documents table
+L1179:         $document = Document::create([
+L1180:             'client_id'          => $clientId,
+L1181:             'client_code'        => $clientCode,
+L1182:             'client_name'        => $client['company_name'] ?? '',
+L1183:             'title'              => $storedFilename,
+L1184:             'document_ref'       => 'EMPSA',
+L1185:             'document_code'      => 'EMPSA_SOA',
+L1186:             'doc_group'          => 'SARS Returns',
+L1187:             'file_original_name' => 'EMPSA_Statement_' . $clientCode . '_' . $taxYear . '.pdf',
+L1188:             'file_stored_name'   => $storedFilename,
+L1189:             'file_path'          => $storagePath . '/' . $storedFilename,
+L1190:             'file_mime_type'     => 'application/pdf',
+L1191:             'financial_year'     => $taxYear,
+L1192:             'description'        => 'EMPSA Statement of Account for ' . ($client['company_name'] ?? '') . ' - Tax Year ' . $taxYear,
+L1193:             'uploaded_by'        => Auth::check() ? Auth::user()->name : 'System',
+L1194:             'created_by'         => Auth::check() ? Auth::user()->id : null,
+L1195:             'status'             => 1,
+L1196:             'show_as_current'    => true,
+L1197:             'created_at'         => now(),
+L1198:             'updated_at'         => now(),
+L1199:         ]);
+L1200: 
+L1201:         // Set file_size directly (not in fillable but column exists)
+L1202:         DB::table('cims_documents')->where('id', $document->id)->update(['file_size' => $fileSize]);
+L1203: 
+L1204:         return [
+L1205:             'document'    => $document,
+L1206:             'file_path'   => $fullFilePath,
+L1207:             'file_name'   => $storedFilename,
+L1208:             'data'        => $data,
+L1209:         ];
+L1210:     }
+
+L1216:     public function generateStatementPdf(Request $request)
+L1217:     {
+L1218:         $clientId = $request->get('client_id');
+L1219:         $taxYear  = $request->get('tax_year');
+L1220: 
+L1221:         if (!$clientId || !$taxYear) {
+L1222:             return response()->json(['error' => 'Client and tax year are required.'], 400);
+L1223:         }
+L1224: 
+L1225:         try {
+L1226:             $result = $this->generateAndStoreStatementPdf($clientId, $taxYear);
+L1227:             $document = $result['document'];
+L1228: 
+L1229:             return response()->json([
+L1230:                 'success'     => true,
+L1231:                 'document_id' => $document->id,
+L1232:                 'view_url'    => route('cimsdocmanager.view', $document->id),
+L1233:                 'message'     => 'PDF generated and stored successfully.',
+L1234:             ]);
+L1235:         } catch (\Exception $e) {
+L1236:             return response()->json(['error' => 'Failed to generate PDF: ' . $e->getMessage()], 500);
+L1237:         }
+L1238:     }
+
+L1244:     public function sendStatementEmail(Request $request)
+L1245:     {
+L1246:         $clientId = $request->get('client_id');
+L1247:         $taxYear  = $request->get('tax_year');
+L1248:         $emailTo  = $request->get('email_to');
+L1249:         $subject  = $request->get('subject', 'EMPSA Statement of Account');
+L1250:         $message  = $request->get('message', '');
+L1251:         $sendCopy = $request->get('send_copy', 0);
+L1252: 
+L1253:         if (!$clientId || !$taxYear || !$emailTo) {
+L1254:             return response()->json(['error' => 'Client, tax year and email address are required.'], 400);
+L1255:         }
+L1256: 
+L1257:         if (!filter_var($emailTo, FILTER_VALIDATE_EMAIL)) {
+L1258:             return response()->json(['error' => 'Invalid email address.'], 400);
+L1259:         }
+L1260: 
+L1261:         try {
+L1262:             // Generate and store PDF using centralized method
+L1263:             $pdfResult = $this->generateAndStoreStatementPdf($clientId, $taxYear);
+L1264:             $pdfFilePath = $pdfResult['file_path'];
+L1265:             $pdfFileName = $pdfResult['file_name'];
+L1266:             $data = $pdfResult['data'];
+L1267:             $client = $data['client'];
+L1268: 
+L1269:             // Generate a temp Excel file for email attachment
+L1270:             $response = $this->apiStatementData($request);
+L1271:             $excelData = json_decode($response->getContent(), true);
+L1272: 
+L1273:             $spreadsheet = new Spreadsheet();
+L1274:             $sheet = $spreadsheet->getActiveSheet();
+L1275:             $sheet->setTitle('Statement of Account');
+L1276: 
+L1277:             $darkBlue = '003366';
+L1278:             $lightBlue = 'E8EEF4';
+L1279:             $white = 'FFFFFF';
+L1280: 
+L1281:             $sheet->mergeCells('A1:H1');
+L1282:             $sheet->setCellValue('A1', 'SARS - EMPLOYMENT TAXES - STATEMENT OF ACCOUNT (EMPSA)');
+L1283:             $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14)->getColor()->setRGB($white);
+L1284:             $sheet->getStyle('A1')->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB($darkBlue);
+L1285:             $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+L1286:             $sheet->getRowDimension(1)->setRowHeight(30);
+L1287: 
+L1288:             $sheet->setCellValue('A3', 'Client:');
+L1289:             $sheet->setCellValue('B3', $client['company_name']);
+L1290:             $sheet->setCellValue('A4', 'PAYE Ref:');
+L1291:             $sheet->setCellValue('B4', $client['paye_number']);
+L1292:             $sheet->setCellValue('A5', 'Tax Year:');
+L1293:             $sheet->setCellValue('B5', $data['tax_year']);
+L1294:             $sheet->setCellValue('A6', 'Date:');
+L1295:             $sheet->setCellValue('B6', $data['today']);
+L1296:             $sheet->getStyle('A3:A6')->getFont()->setBold(true);
+L1297: 
+L1298:             $row = 8;
+L1299:             $sheet->mergeCells("A{$row}:H{$row}");
+L1300:             $sheet->setCellValue("A{$row}", 'Summary Information: Employer Reconciliation');
+L1301:             $sheet->getStyle("A{$row}")->getFont()->setBold(true)->getColor()->setRGB($white);
+L1302:             $sheet->getStyle("A{$row}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB($darkBlue);
+L1303:             $row++;
+L1304: 
+L1305:             $prevYear = (int)$data['tax_year'] - 1;
+L1306:             $sheet->setCellValue("A{$row}", "PAYE/SDL/UIF YEAR {$prevYear}");
+L1307:             $sheet->setCellValue("B{$row}", $data['summary']['prev_year_balance']);
+L1308:             $sheet->getStyle("B{$row}")->getNumberFormat()->setFormatCode('#,##0.00');
+L1309:             $row++;
+L1310:             $sheet->setCellValue("A{$row}", "PAYE/SDL/UIF YEAR {$data['tax_year']}");
+L1311:             $sheet->setCellValue("B{$row}", $data['summary']['current_year_balance']);
+L1312:             $sheet->getStyle("B{$row}")->getNumberFormat()->setFormatCode('#,##0.00');
+L1313:             $row++;
+L1314:             $sheet->setCellValue("A{$row}", 'CLOSING BALANCE');
+L1315:             $sheet->setCellValue("B{$row}", $data['summary']['closing_balance']);
+L1316:             $sheet->getStyle("A{$row}:B{$row}")->getFont()->setBold(true);
+L1317:             $sheet->getStyle("B{$row}")->getNumberFormat()->setFormatCode('#,##0.00');
+L1318:             $sheet->getStyle("A{$row}:B{$row}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB($lightBlue);
+L1319: 
+L1320:             $row += 2;
+L1321:             $headers = ['Date', 'Reference', 'Description', 'Transaction Value', 'PAYE', 'SDL', 'UIF', 'Account Balance'];
+L1322:             $cols = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+L1323: 
+L1324:             $sheet->mergeCells("A{$row}:H{$row}");
+L1325:             $sheet->setCellValue("A{$row}", 'Transaction Details');
+L1326:             $sheet->getStyle("A{$row}")->getFont()->setBold(true)->getColor()->setRGB($white);
+L1327:             $sheet->getStyle("A{$row}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB($darkBlue);
+L1328:             $row++;
+L1329: 
+L1330:             foreach ($headers as $i => $h) {
+L1331:                 $sheet->setCellValue($cols[$i] . $row, $h);
+L1332:             }
+L1333:             $sheet->getStyle("A{$row}:H{$row}")->getFont()->setBold(true)->getColor()->setRGB($white);
+L1334:             $sheet->getStyle("A{$row}:H{$row}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB($darkBlue);
+L1335:             $row++;
+L1336: 
+L1337:             foreach ($data['periods'] as $period) {
+L1338:                 foreach ($period['transactions'] as $txn) {
+L1339:                     $sheet->setCellValue("A{$row}", $txn['date'] ?? '');
+L1340:                     $sheet->setCellValue("B{$row}", $txn['reference'] ?? '');
+L1341:                     $sheet->setCellValue("C{$row}", $txn['description'] ?? '');
+L1342:                     $sheet->setCellValue("D{$row}", $txn['value']);
+L1343:                     $sheet->setCellValue("E{$row}", $txn['paye']);
+L1344:                     $sheet->setCellValue("F{$row}", $txn['sdl']);
+L1345:                     $sheet->setCellValue("G{$row}", $txn['uif']);
+L1346:                     $sheet->setCellValue("H{$row}", $txn['balance']);
+L1347:                     $sheet->getStyle("D{$row}:H{$row}")->getNumberFormat()->setFormatCode('#,##0.00');
+L1348:                     $row++;
+L1349:                 }
+L1350:                 $sheet->setCellValue("A{$row}", 'BALANCE: TAX PERIOD ' . $period['period_label']);
+L1351:                 $sheet->mergeCells("A{$row}:D{$row}");
+L1352:                 $sheet->setCellValue("E{$row}", $period['balance_paye']);
+L1353:                 $sheet->setCellValue("F{$row}", $period['balance_sdl']);
+L1354:                 $sheet->setCellValue("G{$row}", $period['balance_uif']);
+L1355:                 $sheet->setCellValue("H{$row}", $period['balance_total']);
+L1356:                 $sheet->getStyle("A{$row}:H{$row}")->getFont()->setBold(true);
+L1357:                 $sheet->getStyle("A{$row}:H{$row}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB($lightBlue);
+L1358:                 $sheet->getStyle("E{$row}:H{$row}")->getNumberFormat()->setFormatCode('#,##0.00');
+L1359:                 $row++;
+L1360:             }
+L1361: 
+L1362:             foreach ($cols as $col) {
+L1363:                 $sheet->getColumnDimension($col)->setAutoSize(true);
+L1364:             }
+L1365: 
+L1366:             $excelFileName = 'EMPSA_Statement_' . ($client['client_code'] ?: 'export') . '_' . $data['tax_year'] . '.xlsx';
+L1367:             $excelTempPath = storage_path('app/' . $excelFileName);
+L1368:             $writer = new Xlsx($spreadsheet);
+L1369:             $writer->save($excelTempPath);
+L1370: 
+L1371:             // Get from address from system config
+L1372:             $fromAddress = config('system.settings_email_from_address', 'cims@smartweigh.co.za');
+L1373:             $fromName    = config('system.settings_email_from_name', 'CIMS');
+L1374: 
+L1375:             // Build recipients list
+L1376:             $ccList = [];
+L1377:             if ($sendCopy && Auth::check()) {
+L1378:                 $userEmail = Auth::user()->email;
+L1379:                 if ($userEmail && $userEmail !== $emailTo) {
+L1380:                     $ccList[] = $userEmail;
+L1381:                 }
+L1382:             }
+L1383: 
+L1384:             // Send email with both attachments (PDF from document storage + temp Excel)
+L1385:             Mail::raw($message ?: 'Please find attached your EMPSA Statement of Account.', function ($mail) use ($emailTo, $ccList, $subject, $fromAddress, $fromName, $excelTempPath, $excelFileName, $pdfFilePath, $pdfFileName) {
+L1386:                 $mail->from($fromAddress, $fromName)
+L1387:                      ->to($emailTo)
+L1388:                      ->subject($subject)
+L1389:                      ->attach($excelTempPath, [
+L1390:                          'as' => $excelFileName,
+L1391:                          'mime' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+L1392:                      ])
+L1393:                      ->attach($pdfFilePath, [
+L1394:                          'as' => $pdfFileName,
+L1395:                          'mime' => 'application/pdf',
+L1396:                      ]);
+L1397:                 if (!empty($ccList)) {
+L1398:                     $mail->cc($ccList);
+L1399:                 }
+L1400:             });
+L1401: 
+L1402:             // Clean up temp Excel file only (PDF stays in document storage)
+L1403:             if (file_exists($excelTempPath)) {
+L1404:                 unlink($excelTempPath);
+L1405:             }
+L1406: 
+L1407:             return response()->json(['message' => 'Statement emailed successfully to ' . $emailTo]);
+L1408: 
+L1409:         } catch (\Exception $e) {
+L1410:             return response()->json(['error' => 'Failed to send email: ' . $e->getMessage()], 500);
+L1411:         }
+L1412:     }
+
+L1423:     public function apiSarsRepresentative($clientId)
+L1424:     {
+L1425:         // Look for SARS Representative (director_type_id = 3) in client_master_directors
+L1426:         $sarsRep = DB::table('client_master_directors')
+L1427:             ->where('client_id', $clientId)
+L1428:             ->where('director_type_id', 3)
+L1429:             ->where('is_active', 1)
+L1430:             ->first();
+L1431: 
+L1432:         if (!$sarsRep) {
+L1433:             // Fallback: try first active director
+L1434:             $sarsRep = DB::table('client_master_directors')
+L1435:                 ->where('client_id', $clientId)
+L1436:                 ->where('is_active', 1)
+L1437:                 ->first();
+L1438:         }
+L1439: 
+L1440:         if (!$sarsRep) {
+L1441:             return response()->json(['found' => false]);
+L1442:         }
+L1443: 
+L1444:         return response()->json([
+L1445:             'found' => true,
+L1446:             'first_name' => $sarsRep->firstname ?? '',
+L1447:             'surname' => $sarsRep->surname ?? '',
+L1448:             'position' => $sarsRep->director_type_name ?? '',
+L1449:             'mobile_phone' => $sarsRep->mobile_phone ?? '',
+L1450:             'office_phone' => $sarsRep->office_phone ?? '',
+L1451:             'email' => $sarsRep->email ?? '',
+L1452:         ]);
+L1453:     }
+
+
+================================================================================
+FILE: CIMS_EMP201/Resources/views/emp201/statement.blade.php
+================================================================================
+Size: 36391 bytes
+L1: @extends('layouts.default')
+L2: 
+L3: @section('title', 'EMPSA - Statement of Account')
+L4: 
+L5: @push('styles')
+L6: <meta name="csrf-token" content="{{ csrf_token() }}">
+L7: <style>
+L8:     /* ============================================
+L9:        EMPSA STATEMENT OF ACCOUNT
+L10:        Matching SARS official styling
+L11:        ============================================ */
+L12: 
+L13:     /* --- PAGE WRAPPER --- */
+L14:     .empsa-page {
+L15:         font-family: 'Poppins', Arial, sans-serif;
+L16:         background: #f5f7fa;
+L17:         padding: 40px 40px;
+L18:         max-width: 1400px;
+L19:         margin: 0 auto;
+L20:     }
+L21: 
+L22:     /* --- SELECTION CARD (same style as pivot) --- */
+L23:     .empsa-selection-card .card-body {
+L24:         padding: 24px 28px;
+L25:     }
+L26:     .empsa-selection-card .card {
+L27:         border: none;
+L28:         border-radius: 12px;
+L29:         box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+L30:     }
+L31:     .empsa-selection-card label {
+L32:         font-family: 'Poppins', sans-serif;
+L33:         font-size: 13px;
+L34:         font-weight: 600;
+L35:         color: #0d3d56;
+L36:         margin-bottom: 6px;
+L37:     }
+L38:     .empsa-selection-card select {
+L39:         min-height: 48px;
+L40:         border-radius: 8px;
+L41:         font-size: 14px;
+L42:     }
+L43: 
+L44:     /* --- SARS STATEMENT DOCUMENT --- */
+L45:     .sars-statement {
+L46:         background: #fff;
+L47:         border: 2px solid #003366;
+L48:         border-radius: 4px;
+L49:         max-width: 1200px;
+L50:         margin: 40px auto;
+L51:         padding: 0;
+L52:         box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+L53:     }
+L54: 
+L55:     /* SARS Header */
+L56:     .sars-header {
+L57:         background: linear-gradient(135deg, #003366 0%, #004488 100%);
+L58:         color: #fff;
+L59:         padding: 20px 30px;
+L60:         display: flex;
+L61:         justify-content: space-between;
+L62:         align-items: center;
+L63:     }
+L64:     .sars-header .sars-logo-area {
+L65:         display: flex;
+L66:         align-items: center;
+L67:         gap: 15px;
+L68:     }
+L69:     .sars-header .sars-logo-area .sars-text {
+L70:         font-size: 24px;
+L71:         font-weight: 800;
+L72:         letter-spacing: 3px;
+L73:         color: #fff;
+L74:     }
+L75:     .sars-header .sars-logo-area .sars-sub {
+L76:         font-size: 11px;
+L77:         color: #aaccee;
+L78:         margin-top: 2px;
+L79:     }
+L80:     .sars-header .header-right {
+L81:         text-align: right;
+L82:     }
+L83:     .sars-header .header-right .empsa-label {
+L84:         font-size: 20px;
+L85:         font-weight: 700;
+L86:         letter-spacing: 2px;
+L87:     }
+L88:     .sars-header .header-right .empsa-subtitle {
+L89:         font-size: 12px;
+L90:         color: #aaccee;
+L91:     }
+L92: 
+L93:     /* Body content */
+L94:     .sars-body {
+L95:         padding: 24px 30px;
+L96:     }
+L97: 
+L98:     /* Section headers (blue banner) */
+L99:     .sars-section-header {
+L100:         background: linear-gradient(135deg, #003366 0%, #004488 100%);
+L101:         color: #fff;
+L102:         padding: 8px 16px;
+L103:         font-size: 13px;
+L104:         font-weight: 700;
+L105:         letter-spacing: 0.5px;
+L106:         margin: 16px 0 0 0;
+L107:         border-radius: 2px;
+L108:     }
+L109: 
+L110:     /* Details boxes */
+L111:     .sars-details-box {
+L112:         border: 1px solid #c0d0e0;
+L113:         padding: 12px 16px;
+L114:         margin-bottom: 0;
+L115:         font-size: 12px;
+L116:         line-height: 1.6;
+L117:     }
+L118:     .sars-details-box .detail-row {
+L119:         display: flex;
+L120:         justify-content: space-between;
+L121:         padding: 3px 0;
+L122:         border-bottom: 1px solid #e8eef4;
+L123:     }
+L124:     .sars-details-box .detail-row:last-child {
+L125:         border-bottom: none;
+L126:     }
+L127:     .sars-details-box .detail-label {
+L128:         color: #003366;
+L129:         font-weight: 600;
+L130:         min-width: 180px;
+L131:     }
+L132:     .sars-details-box .detail-value {
+L133:         color: #333;
+L134:         text-align: right;
+L135:     }
+L136: 
+L137:     /* Two-column layout */
+L138:     .sars-two-col {
+L139:         display: flex;
+L140:         gap: 0;
+L141:     }
+L142:     .sars-two-col .col-left {
+L143:         flex: 1;
+L144:         padding-right: 20px;
+L145:     }
+L146:     .sars-two-col .col-right {
+L147:         flex: 1;
+L148:         padding-left: 20px;
+L149:     }
+L150: 
+L151:     /* Summary table */
+L152:     .sars-summary-table {
+L153:         width: 100%;
+L154:         border-collapse: collapse;
+L155:         font-size: 12px;
+L156:         margin-top: 0;
+L157:     }
+L158:     .sars-summary-table th {
+L159:         background: #e8eef4;
+L160:         color: #003366;
+L161:         font-weight: 700;
+L162:         padding: 8px 12px;
+L163:         text-align: left;
+L164:         border: 1px solid #c0d0e0;
+L165:     }
+L166:     .sars-summary-table td {
+L167:         padding: 6px 12px;
+L168:         border: 1px solid #c0d0e0;
+L169:         color: #333;
+L170:     }
+L171:     .sars-summary-table td.amount {
+L172:         text-align: right;
+L173:         font-family: 'Poppins', Arial, sans-serif;
+L174:         font-weight: 500;
+L175:     }
+L176:     .sars-summary-table tr.closing-balance {
+L177:         background: #e8eef4;
+L178:         font-weight: 700;
+L179:     }
+L180:     .sars-summary-table tr.closing-balance td {
+L181:         color: #003366;
+L182:         font-weight: 700;
+L183:         border-top: 2px solid #003366;
+L184:     }
+L185: 
+L186:     /* Status info table */
+L187:     .sars-status-table {
+L188:         width: 100%;
+L189:         border-collapse: collapse;
+L190:         font-size: 12px;
+L191:     }
+L192:     .sars-status-table th {
+L193:         background: #e8eef4;
+L194:         color: #003366;
+L195:         font-weight: 700;
+L196:         padding: 6px 10px;
+L197:         border: 1px solid #c0d0e0;
+L198:         text-align: center;
+L199:     }
+L200:     .sars-status-table td {
+L201:         padding: 6px 10px;
+L202:         border: 1px solid #c0d0e0;
+L203:         text-align: center;
+L204:         color: #333;
+L205:     }
+L206:     .status-active { color: #28a745; font-weight: 700; }
+L207:     .status-not-registered { color: #dc3545; font-weight: 600; font-size: 11px; }
+L208: 
+L209:     /* Transaction details table */
+L210:     .sars-txn-table {
+L211:         width: 100%;
+L212:         border-collapse: collapse;
+L213:         font-size: 11px;
+L214:         margin-top: 0;
+L215:     }
+L216:     .sars-txn-table thead th {
+L217:         background: #003366;
+L218:         color: #fff;
+L219:         font-weight: 700;
+L220:         padding: 8px 8px;
+L221:         border: 1px solid #002244;
+L222:         text-align: center;
+L223:         font-size: 10px;
+L224:         white-space: nowrap;
+L225:     }
+L226:     .sars-txn-table thead th.sub-header {
+L227:         background: #e8eef4;
+L228:         color: #003366;
+L229:         font-size: 10px;
+L230:     }
+L231:     .sars-txn-table tbody td {
+L232:         padding: 4px 8px;
+L233:         border: 1px solid #dde4ec;
+L234:         color: #333;
+L235:         vertical-align: top;
+L236:     }
+L237:     .sars-txn-table tbody td.amount {
+L238:         text-align: right;
+L239:         font-family: 'Poppins', Arial, sans-serif;
+L240:         font-weight: 500;
+L241:         font-size: 11px;
+L242:         white-space: nowrap;
+L243:     }
+L244:     .sars-txn-table tbody td.date-col {
+L245:         white-space: nowrap;
+L246:         font-size: 11px;
+L247:     }
+L248:     .sars-txn-table tbody td.desc-col {
+L249:         font-size: 11px;
+L250:     }
+L251:     .sars-txn-table tbody tr.period-balance {
+L252:         background: #e8eef4;
+L253:         font-weight: 700;
+L254:     }
+L255:     .sars-txn-table tbody tr.period-balance td {
+L256:         color: #003366;
+L257:         font-weight: 700;
+L258:         border-top: 2px solid #003366;
+L259:         border-bottom: 2px solid #003366;
+L260:     }
+L261:     .sars-txn-table tbody tr.cumulative-row {
+L262:         background: #d4e5f7;
+L263:         font-weight: 700;
+L264:     }
+L265:     .sars-txn-table tbody tr.cumulative-row td {
+L266:         color: #003366;
+L267:         font-weight: 700;
+L268:         border-top: 3px solid #003366;
+L269:         font-size: 12px;
+L270:     }
+L271:     .sars-txn-table tbody tr.total-liability-row {
+L272:         background: #f5f7fa;
+L273:     }
+L274:     .sars-txn-table tbody tr.total-liability-row td {
+L275:         font-weight: 600;
+L276:         border-top: 1px solid #99aabb;
+L277:     }
+L278:     .sars-txn-table tbody tr.financial-movement-row td {
+L279:         font-style: italic;
+L280:         color: #666;
+L281:     }
+L282: 
+L283:     /* Aging table */
+L284:     .sars-aging-table {
+L285:         width: 100%;
+L286:         border-collapse: collapse;
+L287:         font-size: 12px;
+L288:         margin-top: 0;
+L289:     }
+L290:     .sars-aging-table th {
+L291:         background: #003366;
+L292:         color: #fff;
+L293:         font-weight: 700;
+L294:         padding: 8px 12px;
+L295:         border: 1px solid #002244;
+L296:         text-align: center;
+L297:     }
+L298:     .sars-aging-table td {
+L299:         padding: 6px 12px;
+L300:         border: 1px solid #c0d0e0;
+L301:         text-align: right;
+L302:         font-family: 'Poppins', Arial, sans-serif;
+L303:         font-weight: 500;
+L304:     }
+L305: 
+L306:     /* Compliance table */
+L307:     .sars-compliance-table {
+L308:         width: 100%;
+L309:         border-collapse: collapse;
+L310:         font-size: 12px;
+L311:     }
+L312:     .sars-compliance-table td {
+L313:         padding: 8px 12px;
+L314:         border: 1px solid #c0d0e0;
+L315:         color: #333;
+L316:     }
+L317:     .sars-compliance-table td:first-child {
+L318:         font-weight: 600;
+L319:         color: #003366;
+L320:         width: 220px;
+L321:     }
+L322: 
+L323:     /* Negative amounts */
+L324:     .neg-amount { color: #dc3545; }
+L325: 
+L326:     /* --- HEADER BAR (matching pivot) --- */
+L327:     .empsa-header {
+L328:         background: linear-gradient(135deg, #ffffff 0%, #f0fafb 100%);
+L329:         padding: 20px 28px;
+L330:         border-radius: 12px;
+L331:         margin-bottom: 24px;
+L332:         display: flex;
+L333:         align-items: center;
+L334:         justify-content: space-between;
+L335:         box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+L336:         border-left: 5px solid #17A2B8;
+L337:     }
+L338:     .empsa-header .empsa-title {
+L339:         font-family: 'Poppins', sans-serif;
+L340:         font-size: 22px;
+L341:         font-weight: 700;
+L342:         color: #0d3d56;
+L343:     }
+L344:     .empsa-header .empsa-subtitle {
+L345:         font-family: 'Poppins', sans-serif;
+L346:         font-size: 13px;
+L347:         color: #666;
+L348:         margin-top: 2px;
+L349:     }
+L350:     .empsa-header .empsa-badge {
+L351:         font-family: 'Poppins', sans-serif;
+L352:         font-size: 34px;
+L353:         font-weight: 800;
+L354:         color: #0d3d56;
+L355:         letter-spacing: 3px;
+L356:     }
+L357: 
+L358:     /* Print/PDF button bar */
+L359:     .empsa-action-bar {
+L360:         display: flex;
+L361:         gap: 10px;
+L362:         margin-bottom: 16px;
+L363:         justify-content: flex-end;
+L364:     }
+L365: 
+L366:     /* Print styles */
+L367:     @media print {
+L368:         .empsa-header, .empsa-selection-card, .empsa-action-bar,
+L369:         .cims-header, .cims-footer, .sidebar, .navbar, .breadcrumb,
+L370:         #cims_master_menu, #cims_master_header,
+L371:         .cims-menu-wrapper, .cims-nav-container, .cims-main-menu,
+L372:         #loadingSpinner,
+L373:         header, footer, nav,
+L374:         .page-header, .page-wrapper > .container-fluid > .row:first-child { display: none !important; }
+L375:         .sars-statement {
+L376:             border: 2px solid #003366 !important;
+L377:             box-shadow: none !important;
+L378:             margin: 0 !important;
+L379:             max-width: 100% !important;
+L380:         }
+L381:         .empsa-page { padding: 0 !important; margin: 0 !important; max-width: 100% !important; }
+L382:         body { background: #fff !important; }
+L383:         .main-content, .page-wrapper, .container-fluid { padding: 0 !important; margin: 0 !important; }
+L384:         #statementContainer { display: block !important; }
+L385:     }
+L386: 
+L387:     /* Footer */
+L388:     .sars-footer {
+L389:         background: #f5f7fa;
+L390:         padding: 12px 30px;
+L391:         display: flex;
+L392:         justify-content: space-between;
+L393:         font-size: 10px;
+L394:         color: #666;
+L395:         border-top: 2px solid #003366;
+L396:     }
+L397: 
+L398:     /* Email Modal */
+L399:     .empsa-email-modal .modal-header {
+L400:         background: linear-gradient(135deg, #003366 0%, #004488 100%);
+L401:         color: #fff;
+L402:         border-radius: 12px 12px 0 0;
+L403:         padding: 16px 24px;
+L404:     }
+L405:     .empsa-email-modal .modal-header .modal-title {
+L406:         font-family: 'Poppins', sans-serif;
+L407:         font-size: 16px;
+L408:         font-weight: 700;
+L409:     }
+L410:     .empsa-email-modal .modal-header .close {
+L411:         color: #fff;
+L412:         opacity: 0.8;
+L413:         text-shadow: none;
+L414:     }
+L415:     .empsa-email-modal .modal-content {
+L416:         border: none;
+L417:         border-radius: 12px;
+L418:         box-shadow: 0 8px 40px rgba(0,0,0,0.15);
+L419:     }
+L420:     .empsa-email-modal .modal-body {
+L421:         padding: 24px;
+L422:     }
+L423:     .empsa-email-modal .modal-body label {
+L424:         font-family: 'Poppins', sans-serif;
+L425:         font-size: 13px;
+L426:         font-weight: 600;
+L427:         color: #0d3d56;
+L428:         margin-bottom: 6px;
+L429:     }
+L430:     .empsa-email-modal .modal-body .form-control {
+L431:         min-height: 44px;
+L432:         border-radius: 8px;
+L433:         font-size: 14px;
+L434:         font-family: 'Poppins', sans-serif;
+L435:     }
+L436:     .empsa-email-modal .modal-body textarea.form-control {
+L437:         min-height: 100px;
+L438:     }
+L439:     .empsa-email-modal .modal-footer {
+L440:         border-top: 1px solid #eee;
+L441:         padding: 16px 24px;
+L442:     }
+L443:     .empsa-email-modal .custom-checkbox {
+L444:         margin-top: 12px;
+L445:     }
+L446:     .empsa-email-modal .custom-checkbox .custom-control-label {
+L447:         font-size: 13px;
+L448:         font-weight: 500;
+L449:         color: #333;
+L450:         cursor: pointer;
+L451:     }
+L452: </style>
+L453: @endpush
+L454: 
+L455: @section('content')
+L456: <div class="empsa-page">
+L457: 
+L458:     <!-- Page header -->
+L459:     <div class="empsa-header">
+L460:         <div>
+L461:             <div class="empsa-title">Employment Taxes - Statement of Account</div>
+L462:             <div class="empsa-subtitle">SARS EMPSA Report per Client</div>
+L463:         </div>
+L464:         <div class="empsa-badge">EMPSA</div>
+L465:     </div>
+L466: 
+L467:     <!-- Selection filters -->
+L468:     <div class="empsa-selection-card mb-4">
+L469:         <div class="card">
+L470:             <div class="card-body">
+L471:                 <div class="row align-items-end" id="filterRow">
+L472:                     <div class="col-md-4">
+L473:                         <label>Client</label>
+L474:                         <select id="selClient" class="form-control default-select sd_drop_class" data-live-search="true">
+L475:                             <option value="">-- Select Client --</option>
+L476:                             @foreach ($clients as $c)
+L477:                                 <option value="{{ $c->client_id }}">{{ $c->client_code }} - {{ $c->company_name }}</option>
+L478:                             @endforeach
+L479:                         </select>
+L480:                     </div>
+L481:                     <div class="col-md-3">
+L482:                         <label>Tax Year</label>
+L483:                         <select id="selTaxYear" class="form-control default-select sd_drop_class">
+L484:                             <option value="">-- Select Tax Year --</option>
+L485:                             @foreach ($taxYears as $y)
+L486:                                 <option value="{{ $y }}">{{ $y }} (Mar {{ $y - 1 }} - Feb {{ $y }})</option>
+L487:                             @endforeach
+L488:                         </select>
+L489:                     </div>
+L490:                     <div class="col-md-5">
+L491:                         <label>&nbsp;</label>
+L492:                         <div style="display:flex; gap:8px; flex-wrap:nowrap;">
+L493:                             <button class="btn" id="btnLoad" style="padding:12px 20px; font-size:15px; font-family:Poppins,sans-serif; font-weight:600; background:linear-gradient(135deg,#17A2B8,#138496); color:#fff; border:none; border-radius:8px; min-height:48px;"><i class="fa fa-sync-alt"></i> Generate</button>
+L494:                             <button class="btn btn-success" id="btnExportXlsx" style="display:none; padding:12px 20px; font-size:15px; font-family:Poppins,sans-serif; font-weight:600; border-radius:8px; min-height:48px;"><i class="fa fa-file-excel"></i> Excel</button>
+L495:                             <button class="btn" id="btnExportPDF" style="display:none; padding:12px 20px; font-size:15px; font-family:Poppins,sans-serif; font-weight:600; border-radius:8px; min-height:48px; background:linear-gradient(135deg,#e91e63,#c2185b); color:#fff; border:none;"><i class="fa fa-file-pdf"></i> PDF</button>
+L496:                             <button class="btn" id="btnEmail" style="display:none; padding:12px 20px; font-size:15px; font-family:Poppins,sans-serif; font-weight:600; border-radius:8px; min-height:48px; background:linear-gradient(135deg,#6f42c1,#5a32a3); color:#fff; border:none;"><i class="fa fa-envelope"></i> Email</button>
+L497:                         </div>
+L498:                     </div>
+L499:                 </div>
+L500:             </div>
+L501:         </div>
+L502:     </div>
+L503: 
+L504:     <!-- Statement container (populated by JS) -->
+L505:     <div id="statementContainer" style="display:none;">
+L506:         <!-- Will be populated via AJAX -->
+L507:     </div>
+L508: 
+L509:     <!-- Loading spinner -->
+L510:     <div id="loadingSpinner" style="display:none; text-align:center; padding:60px;">
+L511:         <div class="spinner-border text-info" role="status" style="width:3rem; height:3rem;">
+L512:             <span class="sr-only">Loading...</span>
+L513:         </div>
+L514:         <div style="margin-top:12px; color:#0d3d56; font-weight:600;">Generating Statement of Account...</div>
+L515:     </div>
+L516: </div>
+L517: 
+L518: <!-- Email Statement Modal -->
+L519: <div class="modal fade empsa-email-modal" id="emailModal" tabindex="-1" role="dialog" aria-labelledby="emailModalLabel" aria-hidden="true">
+L520:     <div class="modal-dialog modal-dialog-centered" role="document">
+L521:         <div class="modal-content">
+L522:             <div class="modal-header">
+L523:                 <h5 class="modal-title" id="emailModalLabel"><i class="fa fa-envelope" style="margin-right:8px;"></i>Email Statement of Account</h5>
+L524:                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+L525:                     <span aria-hidden="true">&times;</span>
+L526:                 </button>
+L527:             </div>
+L528:             <div class="modal-body">
+L529:                 <div class="form-group">
+L530:                     <label for="emailTo">To (Client Email)</label>
+L531:                     <input type="email" class="form-control" id="emailTo" placeholder="client@example.com">
+L532:                 </div>
+L533:                 <div class="form-group">
+L534:                     <label for="emailSubject">Subject</label>
+L535:                     <input type="text" class="form-control" id="emailSubject" placeholder="EMPSA Statement of Account">
+L536:                 </div>
+L537:                 <div class="form-group">
+L538:                     <label for="emailMessage">Message (optional)</label>
+L539:                     <textarea class="form-control" id="emailMessage" placeholder="Please find attached your EMPSA Statement of Account."></textarea>
+L540:                 </div>
+L541:                 <div class="custom-control custom-checkbox">
+L542:                     <input type="checkbox" class="custom-control-input" id="emailSendCopy">
+L543:                     <label class="custom-control-label" for="emailSendCopy">Send me a copy</label>
+L544:                 </div>
+L545:             </div>
+L546:             <div class="modal-footer">
+L547:                 <button type="button" class="btn btn-secondary" data-dismiss="modal" style="padding:10px 20px; font-family:Poppins,sans-serif; font-weight:600; border-radius:8px;">Cancel</button>
+L548:                 <button type="button" class="btn" id="btnSendEmail" style="padding:10px 20px; font-family:Poppins,sans-serif; font-weight:600; border-radius:8px; background:linear-gradient(135deg,#6f42c1,#5a32a3); color:#fff; border:none;"><i class="fa fa-paper-plane" style="margin-right:6px;"></i>Send Email</button>
+L549:             </div>
+L550:         </div>
+L551:     </div>
+L552: </div>
+L553: @endsection
+L554: 
+L555: @push('scripts')
+L556: <script>
+L557: (function(){
+L558:     'use strict';
+L559: 
+L560:     var $container = $('#statementContainer');
+L561:     var $spinner   = $('#loadingSpinner');
+L562:     var lastData   = null; // store last loaded data for exports
+L563: 
+L564:     // Generate statement
+L565:     $('#btnLoad').on('click', function(){
+L566:         var clientId = $('#selClient').val();
+L567:         var taxYear  = $('#selTaxYear').val();
+L568: 
+L569:         if (!clientId || !taxYear) {
+L570:             Swal.fire({icon:'warning', title:'Selection Required', text:'Please select a client and tax year.'});
+L571:             return;
+L572:         }
+L573: 
+L574:         $container.hide();
+L575:         $('#btnExportXlsx, #btnExportPDF, #btnEmail').hide();
+L576:         $spinner.show();
+L577: 
+L578:         $.ajax({
+L579:             url: '{{ route("cimsemp201.api.statement-data") }}',
+L580:             data: { client_id: clientId, tax_year: taxYear },
+L581:             dataType: 'json',
+L582:             success: function(data) {
+L583:                 $spinner.hide();
+L584:                 lastData = data;
+L585:                 renderStatement(data);
+L586:                 $container.show();
+L587:                 $('#btnExportXlsx, #btnExportPDF, #btnEmail').show();
+L588:             },
+L589:             error: function(xhr) {
+L590:                 $spinner.hide();
+L591:                 Swal.fire({icon:'error', title:'Error', text: xhr.responseJSON ? xhr.responseJSON.error : 'Failed to load statement data.'});
+L592:             }
+L593:         });
+L594:     });
+L595: 
+L596:     // PDF - generate server-side, store in document system, open in viewer
+L597:     $('#btnExportPDF').on('click', function(){
+L598:         var clientId = $('#selClient').val();
+L599:         var taxYear  = $('#selTaxYear').val();
+L600:         if (!clientId || !taxYear) return;
+L601: 
+L602:         var $btn = $(this);
+L603:         $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Generating...');
+L604: 
+L605:         $.ajax({
+L606:             url: '{{ route("cimsemp201.statement.generate-pdf") }}',
+L607:             method: 'POST',
+L608:             data: {
+L609:                 _token: $('meta[name="csrf-token"]').attr('content'),
+L610:                 client_id: clientId,
+L611:                 tax_year: taxYear
+L612:             },
+L613:             dataType: 'json',
+L614:             success: function(resp) {
+L615:                 $btn.prop('disabled', false).html('<i class="fa fa-file-pdf"></i> PDF');
+L616:                 if (resp.view_url) {
+L617:                     window.open(resp.view_url, '_blank');
+L618:                 }
+L619:             },
+L620:             error: function(xhr) {
+L621:                 $btn.prop('disabled', false).html('<i class="fa fa-file-pdf"></i> PDF');
+L622:                 var errMsg = xhr.responseJSON ? (xhr.responseJSON.error || xhr.responseJSON.message) : 'Failed to generate PDF.';
+L623:                 Swal.fire({icon:'error', title:'PDF Error', text: errMsg});
+L624:             }
+L625:         });
+L626:     });
+L627: 
+L628:     // Excel export - server-side styled .xlsx
+L629:     $('#btnExportXlsx').on('click', function(){
+L630:         var clientId = $('#selClient').val();
+L631:         var taxYear  = $('#selTaxYear').val();
+L632:         if (!clientId || !taxYear) return;
+L633:         window.location.href = '{{ route("cimsemp201.statement.export-excel") }}?client_id=' + clientId + '&tax_year=' + taxYear;
+L634:     });
+L635: 
+L636:     // Email button - open modal with pre-populated client email
+L637:     $('#btnEmail').on('click', function(){
+L638:         if (!lastData) return;
+L639:         var clientEmail = lastData.client.email || '';
+L640:         var clientName  = lastData.client.company_name || '';
+L641:         var taxYear     = lastData.tax_year || '';
+L642:         $('#emailTo').val(clientEmail);
+L643:         $('#emailSubject').val('EMPSA Statement of Account - ' + clientName + ' - Tax Year ' + taxYear);
+L644:         $('#emailMessage').val('Dear ' + clientName + ',\n\nPlease find attached your Employment Taxes Statement of Account (EMPSA) for Tax Year ' + taxYear + '.\n\nKind regards');
+L645:         $('#emailSendCopy').prop('checked', false);
+L646:         $('#emailModal').modal('show');
+L647:     });
+L648: 
+L649:     // Send email
+L650:     $('#btnSendEmail').on('click', function(){
+L651:         var emailTo   = $('#emailTo').val().trim();
+L652:         var subject   = $('#emailSubject').val().trim();
+L653:         var message   = $('#emailMessage').val().trim();
+L654:         var sendCopy  = $('#emailSendCopy').is(':checked') ? 1 : 0;
+L655:         var clientId  = $('#selClient').val();
+L656:         var taxYear   = $('#selTaxYear').val();
+L657: 
+L658:         if (!emailTo) {
+L659:             Swal.fire({icon:'warning', title:'Email Required', text:'Please enter a valid email address.'});
+L660:             return;
+L661:         }
+L662: 
+L663:         var $btn = $(this);
+L664:         $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Sending...');
+L665: 
+L666:         $.ajax({
+L667:             url: '{{ route("cimsemp201.statement.send-email") }}',
+L668:             method: 'POST',
+L669:             data: {
+L670:                 _token: $('meta[name="csrf-token"]').attr('content'),
+L671:                 client_id: clientId,
+L672:                 tax_year: taxYear,
+L673:                 email_to: emailTo,
+L674:                 subject: subject,
+L675:                 message: message,
+L676:                 send_copy: sendCopy
+L677:             },
+L678:             dataType: 'json',
+L679:             success: function(resp) {
+L680:                 $btn.prop('disabled', false).html('<i class="fa fa-paper-plane" style="margin-right:6px;"></i>Send Email');
+L681:                 $('#emailModal').modal('hide');
+L682:                 Swal.fire({icon:'success', title:'Email Sent', text: resp.message || 'Statement has been emailed successfully.'});
+L683:             },
+L684:             error: function(xhr) {
+L685:                 $btn.prop('disabled', false).html('<i class="fa fa-paper-plane" style="margin-right:6px;"></i>Send Email');
+L686:                 var errMsg = xhr.responseJSON ? (xhr.responseJSON.error || xhr.responseJSON.message) : 'Failed to send email. Please try again.';
+L687:                 Swal.fire({icon:'error', title:'Email Error', text: errMsg});
+L688:             }
+L689:         });
+L690:     });
+L691: 
+L692:     function fmt(val) {
+L693:         var n = parseFloat(val) || 0;
+L694:         return n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+L695:     }
+L696: 
+L697:     function fmtNeg(val) {
+L698:         var n = parseFloat(val) || 0;
+L699:         var s = Math.abs(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+L700:         if (n < 0) return '<span class="neg-amount">-' + s + '</span>';
+L701:         return s;
+L702:     }
+L703: 
+L704:     function renderStatement(data) {
+L705:         var client = data.client;
+L706:         var periods = data.periods;
+L707:         var summary = data.summary;
+L708:         var aging = data.aging;
+L709:         var today = data.today;
+L710:         var prevYear = parseInt(data.tax_year) - 1;
+L711: 
+L712:         var html = '';
+L713:         html += '<div class="sars-statement">';
+L714: 
+L715:         // ========== HEADER ==========
+L716:         html += '<div class="sars-header">';
+L717:         html += '  <div class="sars-logo-area">';
+L718:         html += '    <div>';
+L719:         html += '      <div class="sars-text">SARS</div>';
+L720:         html += '      <div class="sars-sub">South African Revenue Service</div>';
+L721:         html += '    </div>';
+L722:         html += '  </div>';
+L723:         html += '  <div style="text-align:center;">';
+L724:         html += '    <div style="font-size:16px; font-weight:700; letter-spacing:2px;">EMPLOYMENT TAXES</div>';
+L725:         html += '    <div style="font-size:12px; color:#aaccee; margin-top:2px;">Statement of Account</div>';
+L726:         html += '  </div>';
+L727:         html += '  <div class="header-right">';
+L728:         html += '    <div class="empsa-label">EMPSA</div>';
+L729:         html += '  </div>';
+L730:         html += '</div>';
+L731: 
+L732:         // ========== BODY ==========
+L733:         html += '<div class="sars-body">';
+L734: 
+L735:         // Contact + Client address
+L736:         html += '<div class="sars-two-col" style="margin-bottom:16px;">';
+L737:         // Left: Client name/address
+L738:         html += '<div class="col-left">';
+L739:         html += '  <div style="font-weight:700; font-size:13px; color:#003366; margin-bottom:8px;">' + esc(client.company_name) + '</div>';
+L740:         if (client.address) {
+L741:             if (client.address.street_number || client.address.street_name) {
+L742:                 html += '  <div style="font-size:12px; color:#333;">' + esc((client.address.street_number || '') + ' ' + (client.address.street_name || '')).trim() + '</div>';
+L743:             }
+L744:             if (client.address.suburb || client.address.postal_code) {
+L745:                 var suburbLine = esc(client.address.suburb || '');
+L746:                 if (client.address.postal_code) {
+L747:                     suburbLine += (suburbLine ? ', ' : '') + esc(client.address.postal_code);
+L748:                 }
+L749:                 html += '  <div style="font-size:12px; color:#333;">' + suburbLine + '</div>';
+L750:             }
+L751:             if (client.address.city || client.address.province) {
+L752:                 html += '  <div style="font-size:12px; color:#333;">' + esc((client.address.city || '') + (client.address.province ? ', ' + client.address.province : '')) + '</div>';
+L753:             }
+L754:         }
+L755:         html += '</div>';
+L756:         // Right: Details
+L757:         html += '<div class="col-right">';
+L758:         html += '  <div class="sars-details-box">';
+L759:         html += '    <div class="detail-row"><span class="detail-label">Reference number:</span><span class="detail-value">' + esc(client.paye_number || 'N/A') + '</span></div>';
+L760:         html += '    <div class="detail-row"><span class="detail-label">Date:</span><span class="detail-value">' + esc(today) + '</span></div>';
+L761:         html += '    <div class="detail-row"><span class="detail-label">Statement period:</span><span class="detail-value">' + prevYear + '/03/01 to ' + data.tax_year + '/02/28</span></div>';
+L762:         html += '  </div>';
+L763:         html += '</div>';
+L764:         html += '</div>'; // end two-col
+L765: 
+L766:         // ========== SUMMARY ==========
+L767:         html += '<div class="sars-section-header">Summary Information: Employer Reconciliation</div>';
+L768:         html += '<table class="sars-summary-table">';
+L769:         html += '<tr><td>PAYE/SDL/UIF YEAR ' + prevYear + '</td><td class="amount">' + fmt(summary.prev_year_balance) + '</td></tr>';
+L770:         html += '<tr><td>PAYE/SDL/UIF YEAR ' + data.tax_year + '</td><td class="amount">' + fmt(summary.current_year_balance) + '</td></tr>';
+L771:         html += '<tr><td>UNALLOCATED PAYMENTS</td><td class="amount">' + fmt(0) + '</td></tr>';
+L772:         html += '<tr class="closing-balance"><td>CLOSING BALANCE</td><td class="amount">' + fmt(summary.closing_balance) + '</td></tr>';
+L773:         html += '</table>';
+L774: 
+L775:         // ========== STATUS INFO ==========
+L776:         html += '<div class="sars-section-header">Status Information</div>';
+L777:         html += '<table class="sars-status-table">';
+L778:         html += '<thead><tr>';
+L779:         html += '  <th colspan="2">PAYE</th><th colspan="2">SDL</th><th colspan="2">UIF</th>';
+L780:         html += '</tr><tr>';
+L781:         html += '  <th>Status</th><th>Effective Date</th><th>Status</th><th>Effective Date</th><th>Status</th><th>Effective Date</th>';
+L782:         html += '</tr></thead>';
+L783:         html += '<tbody><tr>';
+L784:         html += '  <td><span class="' + (client.paye_number ? 'status-active' : 'status-not-registered') + '">' + (client.paye_number ? 'ACTIVE' : 'NOT REGISTERED') + '</span></td>';
+L785:         html += '  <td>' + esc(client.tax_reg_date || '') + '</td>';
+L786:         html += '  <td><span class="' + (client.sdl_number ? 'status-active' : 'status-not-registered') + '">' + (client.sdl_number ? 'ACTIVE' : 'NOT REGISTERED') + '</span></td>';
+L787:         html += '  <td>' + esc(client.tax_reg_date || '') + '</td>';
+L788:         html += '  <td><span class="' + (client.uif_number ? 'status-active' : 'status-not-registered') + '">' + (client.uif_number ? 'ACTIVE' : 'NOT REGISTERED') + '</span></td>';
+L789:         html += '  <td>' + esc(client.tax_reg_date || '') + '</td>';
+L790:         html += '</tr></tbody>';
+L791:         html += '</table>';
+L792: 
+L793:         // ========== TRANSACTION DETAILS ==========
+L794:         html += '<div class="sars-section-header">Transaction Details</div>';
+L795:         html += '<table class="sars-txn-table">';
+L796:         html += '<thead>';
+L797:         html += '<tr>';
+L798:         html += '  <th rowspan="2" style="width:80px;">Date</th>';
+L799:         html += '  <th rowspan="2" style="width:130px;">Transaction<br>Reference</th>';
+L800:         html += '  <th rowspan="2">Transaction Description</th>';
+L801:         html += '  <th rowspan="2" style="width:100px;">Transaction<br>Value</th>';
+L802:         html += '  <th colspan="4" style="border-bottom:2px solid #fff;">Transaction Allocation Information</th>';
+L803:         html += '  <th rowspan="2" style="width:100px;">Account<br>Balance</th>';
+L804:         html += '</tr>';
+L805:         html += '<tr>';
+L806:         html += '  <th class="sub-header" style="width:90px;">PAYE</th>';
+L807:         html += '  <th class="sub-header" style="width:90px;">SDL</th>';
+L808:         html += '  <th class="sub-header" style="width:90px;">UIF</th>';
+L809:         html += '  <th class="sub-header" style="width:90px;">OTHER</th>';
+L810:         html += '</tr>';
+L811:         html += '</thead>';
+L812:         html += '<tbody>';
+L813: 
+L814:         var cumulativePaye = 0, cumulativeSdl = 0, cumulativeUif = 0, cumulativeOther = 0, cumulativeBalance = 0;
+L815: 
+L816:         // For each period
+L817:         for (var p = 0; p < periods.length; p++) {
+L818:             var period = periods[p];
+L819:             var txns = period.transactions;
+L820:             var periodPaye = 0, periodSdl = 0, periodUif = 0, periodBalance = 0;
+L821: 
+L822:             for (var t = 0; t < txns.length; t++) {
+L823:                 var txn = txns[t];
+L824:                 var rowClass = '';
+L825:                 if (txn.type === 'total_liability') rowClass = ' class="total-liability-row"';
+L826:                 if (txn.type === 'financial_movement') rowClass = ' class="financial-movement-row"';
+L827: 
+L828:                 html += '<tr' + rowClass + '>';
+L829:                 html += '<td class="date-col">' + esc(txn.date || '') + '</td>';
+L830:                 html += '<td style="font-size:10px;">' + esc(txn.reference || '') + '</td>';
+L831:                 var descStyle = (txn.description && txn.description.toUpperCase().indexOf('PAYMENT') !== -1) ? ' style="color:#d32f2f;font-weight:600;"' : '';
+L832:                 html += '<td class="desc-col"' + descStyle + '>' + esc(txn.description) + '</td>';
+L833:                 html += '<td class="amount">' + fmtNeg(txn.value) + '</td>';
+L834:                 html += '<td class="amount">' + fmtNeg(txn.paye) + '</td>';
+L835:                 html += '<td class="amount">' + fmtNeg(txn.sdl) + '</td>';
+L836:                 html += '<td class="amount">' + fmtNeg(txn.uif) + '</td>';
+L837:                 html += '<td class="amount">' + fmtNeg(txn.other || 0) + '</td>';
+L838:                 html += '<td class="amount">' + fmtNeg(txn.balance) + '</td>';
+L839:                 html += '</tr>';
+L840: 
+L841:                 // Track period totals from the balance row type
+L842:                 if (txn.type === 'financial_movement') {
+L843:                     periodPaye = parseFloat(txn.paye) || 0;
+L844:                     periodSdl  = parseFloat(txn.sdl) || 0;
+L845:                     periodUif  = parseFloat(txn.uif) || 0;
+L846:                     periodBalance = parseFloat(txn.balance) || 0;
+L847:                 }
+L848:             }
+L849: 
+L850:             // Period balance row
+L851:             html += '<tr class="period-balance">';
+L852:             html += '<td colspan="4">BALANCE: TAX PERIOD ' + esc(period.period_label) + '</td>';
+L853:             html += '<td class="amount">' + fmtNeg(period.balance_paye) + '</td>';
+L854:             html += '<td class="amount">' + fmtNeg(period.balance_sdl) + '</td>';
+L855:             html += '<td class="amount">' + fmtNeg(period.balance_uif) + '</td>';
+L856:             html += '<td class="amount">' + fmtNeg(period.balance_other || 0) + '</td>';
+L857:             html += '<td class="amount">' + fmtNeg(period.balance_total) + '</td>';
+L858:             html += '</tr>';
+L859: 
+L860:             cumulativePaye += parseFloat(period.balance_paye) || 0;
+L861:             cumulativeSdl += parseFloat(period.balance_sdl) || 0;
+L862:             cumulativeUif += parseFloat(period.balance_uif) || 0;
+L863:             cumulativeOther += parseFloat(period.balance_other) || 0;
+L864:             cumulativeBalance += parseFloat(period.balance_total) || 0;
+L865:         }
+L866: 
+L867:         // Cumulative Balance row
+L868:         html += '<tr class="cumulative-row">';
+L869:         html += '<td colspan="4"><strong>CUMULATIVE BALANCE</strong></td>';
+L870:         html += '<td class="amount">' + fmtNeg(cumulativePaye) + '</td>';
+L871:         html += '<td class="amount">' + fmtNeg(cumulativeSdl) + '</td>';
+L872:         html += '<td class="amount">' + fmtNeg(cumulativeUif) + '</td>';
+L873:         html += '<td class="amount">' + fmtNeg(cumulativeOther) + '</td>';
+L874:         html += '<td class="amount">' + fmtNeg(cumulativeBalance) + '</td>';
+L875:         html += '</tr>';
+L876: 
+L877:         html += '</tbody></table>';
+L878: 
+L879:         // ========== AGING ==========
+L880:         html += '<div class="sars-section-header">Ageing - Transactions are aged according to the original due date, including all related interest and penalties</div>';
+L881:         html += '<table class="sars-aging-table">';
+L882:         html += '<thead><tr><th>Current</th><th>30 Days</th><th>60 Days</th><th>90 Days</th><th>120 Days</th><th>Total</th></tr></thead>';
+L883:         html += '<tbody><tr>';
+L884:         html += '<td>' + fmt(aging.current) + '</td>';
+L885:         html += '<td>' + fmt(aging.days30) + '</td>';
+L886:         html += '<td>' + fmt(aging.days60) + '</td>';
+L887:         html += '<td>' + fmt(aging.days90) + '</td>';
+L888:         html += '<td>' + fmt(aging.days120) + '</td>';
+L889:         html += '<td><strong>' + fmt(aging.total) + '</strong></td>';
+L890:         html += '</tr></tbody></table>';
+L891: 
+L892:         // ========== COMPLIANCE ==========
+L893:         html += '<div class="sars-section-header">Compliance Information</div>';
+L894:         html += '<table class="sars-compliance-table">';
+L895:         html += '<tr><td>Active SDL Reference</td><td>Seta Code (SDL)</td><td>' + esc(client.sdl_number || 'N/A') + '</td></tr>';
+L896:         html += '<tr><td>Outstanding EMP501<br>Reconciliation/s</td><td>Outstanding EMP201</td><td>' + esc(data.compliance.outstanding_emp201 || 'None') + '</td></tr>';
+L897:         html += '<tr><td>Selected For Audit or<br>Verification</td><td colspan="2"></td></tr>';
+L898:         html += '</table>';
+L899: 
+L900:         html += '</div>'; // sars-body
+L901: 
+L902:         // ========== FOOTER ==========
+L903:         html += '<div class="sars-footer">';
+L904:         html += '  <div>Reference number: ' + esc(client.paye_number || '') + '</div>';
+L905:         html += '  <div>EMPSOA_RO</div>';
+L906:         html += '  <div>' + esc(today) + '</div>';
+L907:         html += '  <div>01/01</div>';
+L908:         html += '</div>';
+L909: 
+L910:         html += '</div>'; // sars-statement
+L911: 
+L912:         $container.html(html);
+L913:     }
+L914: 
+L915:     function esc(str) {
+L916:         if (!str) return '';
+L917:         return $('<div/>').text(str).html();
+L918:     }
+L919: 
+L920: })();
+L921: </script>
+L922: @endpush
+L923: 
+
+================================================================================
+FILE: CIMS_EMP201/Resources/views/emp201/statement_pdf.blade.php
+================================================================================
+Size: 15918 bytes
+L1: <!DOCTYPE html>
+L2: <html>
+L3: <head>
+L4: <meta charset="utf-8">
+L5: <style>
+L6:     * { margin: 0; padding: 0; box-sizing: border-box; }
+L7:     body { font-family: 'DejaVu Sans', sans-serif; font-size: 10px; color: #333; line-height: 1.4; }
+L8: 
+L9:     /* Use tables for layout - DomPDF handles tables better than floats */
+L10: 
+L11:     .layout-table { width: 100%; border-collapse: collapse; }
+L12:     .layout-table td { vertical-align: top; border: none; padding: 0; }
+L13: 
+L14:     .sars-header-table {
+L15:         width: 100%;
+L16:         border-collapse: collapse;
+L17:         background: #003366;
+L18:         color: #fff;
+L19:     }
+L20:     .sars-header-table td {
+L21:         padding: 14px 20px;
+L22:         vertical-align: middle;
+L23:         border: none;
+L24:     }
+L25: 
+L26:     .body-content { padding: 16px 20px; }
+L27: 
+L28:     .client-name { font-weight: bold; font-size: 12px; color: #003366; margin-bottom: 6px; }
+L29:     .client-addr { font-size: 10px; color: #333; line-height: 1.6; }
+L30: 
+L31:     .details-box { border: 1px solid #c0d0e0; padding: 8px 12px; font-size: 10px; }
+L32:     .details-box table { width: 100%; border-collapse: collapse; font-size: 10px; }
+L33:     .details-box table td { border: none; padding: 3px 0; border-bottom: 1px solid #e8eef4; }
+L34:     .details-box table tr:last-child td { border-bottom: none; }
+L35:     .detail-label { color: #003366; font-weight: bold; width: 130px; }
+L36:     .detail-value { text-align: right; }
+L37: 
+L38:     .section-header {
+L39:         background: #003366;
+L40:         color: #fff;
+L41:         padding: 6px 12px;
+L42:         font-size: 10px;
+L43:         font-weight: bold;
+L44:         margin-top: 12px;
+L45:         margin-bottom: 0;
+L46:     }
+L47: 
+L48:     table.data-table { width: 100%; border-collapse: collapse; font-size: 9.5px; }
+L49: 
+L50:     .summary-table td { padding: 4px 10px; border: 1px solid #c0d0e0; }
+L51:     .summary-table .amount { text-align: right; font-weight: normal; }
+L52:     .summary-table .closing td { background: #e8eef4; font-weight: bold; color: #003366; border-top: 2px solid #003366; }
+L53: 
+L54:     .status-table th { background: #e8eef4; color: #003366; font-weight: bold; padding: 4px 8px; border: 1px solid #c0d0e0; text-align: center; font-size: 9px; }
+L55:     .status-table td { padding: 4px 8px; border: 1px solid #c0d0e0; text-align: center; }
+L56:     .status-active { color: #28a745; font-weight: bold; }
+L57:     .status-not-reg { color: #dc3545; font-weight: bold; font-size: 8px; }
+L58: 
+L59:     .txn-table th { background: #003366; color: #fff; font-weight: bold; padding: 5px 6px; border: 1px solid #002244; text-align: center; font-size: 9px; }
+L60:     .txn-table th.sub { background: #e8eef4; color: #003366; }
+L61:     .txn-table td { padding: 3px 6px; border: 1px solid #dde4ec; font-weight: normal; }
+L62:     .txn-table td.amount { text-align: right; font-weight: normal; white-space: nowrap; }
+L63:     .txn-table tr.period-bal td { background: #e8eef4; font-weight: bold; color: #003366; border-top: 2px solid #003366; border-bottom: 2px solid #003366; }
+L64:     .txn-table tr.cumulative td { background: #d4e5f7; font-weight: bold; color: #003366; border-top: 3px solid #003366; font-size: 10px; }
+L65:     .txn-table tr.total-liab td { background: #f5f7fa; font-weight: bold; border-top: 1px solid #99aabb; }
+L66:     .txn-table tr.fin-move td { color: #666; }
+L67: 
+L68:     .aging-table th { background: #003366; color: #fff; font-weight: bold; padding: 5px 10px; border: 1px solid #002244; text-align: center; }
+L69:     .aging-table td { padding: 4px 10px; border: 1px solid #c0d0e0; text-align: right; font-weight: normal; }
+L70: 
+L71:     .compliance-table td { padding: 6px 10px; border: 1px solid #c0d0e0; }
+L72:     .compliance-label { font-weight: bold; color: #003366; width: 180px; }
+L73: 
+L74:     .neg { color: #dc3545; }
+L75: 
+L76:     .sars-footer-table {
+L77:         width: 100%;
+L78:         border-collapse: collapse;
+L79:         border-top: 2px solid #003366;
+L80:         background: #f5f7fa;
+L81:     }
+L82:     .sars-footer-table td {
+L83:         padding: 8px 20px;
+L84:         font-size: 8px;
+L85:         color: #666;
+L86:         border: none;
+L87:     }
+L88: </style>
+L89: </head>
+L90: <body>
+L91: 
+L92: {{-- HEADER using table layout --}}
+L93: <table class="sars-header-table">
+L94:     <tr>
+L95:         <td style="width:30%;">
+L96:             <div style="font-size:20px; font-weight:bold; letter-spacing:3px; color:#fff;">SARS</div>
+L97:             <div style="font-size:9px; color:#aaccee;">South African Revenue Service</div>
+L98:         </td>
+L99:         <td style="width:40%; text-align:center;">
+L100:             <div style="font-size:13px; font-weight:bold; letter-spacing:2px; color:#fff;">EMPLOYMENT TAXES</div>
+L101:             <div style="font-size:9px; color:#aaccee;">Statement of Account</div>
+L102:         </td>
+L103:         <td style="width:30%; text-align:right;">
+L104:             <div style="font-size:18px; font-weight:bold; letter-spacing:2px; color:#fff;">EMPSA</div>
+L105:         </td>
+L106:     </tr>
+L107: </table>
+L108: 
+L109: {{-- BODY --}}
+L110: <div class="body-content">
+L111: 
+L112:     {{-- Client info using table layout --}}
+L113:     <table class="layout-table" style="margin-bottom:14px;">
+L114:         <tr>
+L115:             <td style="width:50%; padding-right:12px;">
+L116:                 <div class="client-name">{{ $data['client']['company_name'] }}</div>
+L117:                 <div class="client-addr">
+L118:                     @if(!empty($data['client']['address']))
+L119:                         @php $addr = $data['client']['address']; @endphp
+L120:                         @if(!empty($addr['street_number']) || !empty($addr['street_name']))
+L121:                             {{ trim(($addr['street_number'] ?? '') . ' ' . ($addr['street_name'] ?? '')) }}<br>
+L122:                         @endif
+L123:                         @if(!empty($addr['suburb']) || !empty($addr['postal_code']))
+L124:                             {{ $addr['suburb'] ?? '' }}{{ !empty($addr['suburb']) && !empty($addr['postal_code']) ? ', ' : '' }}{{ $addr['postal_code'] ?? '' }}<br>
+L125:                         @endif
+L126:                         @if(!empty($addr['city']) || !empty($addr['province']))
+L127:                             {{ $addr['city'] ?? '' }}{{ !empty($addr['city']) && !empty($addr['province']) ? ', ' : '' }}{{ $addr['province'] ?? '' }}
+L128:                         @endif
+L129:                     @endif
+L130:                 </div>
+L131:             </td>
+L132:             <td style="width:50%; padding-left:12px;">
+L133:                 <div class="details-box">
+L134:                     <table>
+L135:                         <tr><td class="detail-label">Reference number:</td><td class="detail-value">{{ $data['client']['paye_number'] ?: 'N/A' }}</td></tr>
+L136:                         <tr><td class="detail-label">Date:</td><td class="detail-value">{{ $data['today'] }}</td></tr>
+L137:                         <tr><td class="detail-label">Statement period:</td><td class="detail-value">{{ ($data['tax_year'] - 1) }}/03/01 to {{ $data['tax_year'] }}/02/28</td></tr>
+L138:                     </table>
+L139:                 </div>
+L140:             </td>
+L141:         </tr>
+L142:     </table>
+L143: 
+L144:     {{-- SUMMARY --}}
+L145:     <div class="section-header">Summary Information: Employer Reconciliation</div>
+L146:     <table class="data-table summary-table">
+L147:         <tr><td>PAYE/SDL/UIF YEAR {{ $data['tax_year'] - 1 }}</td><td class="amount">{{ number_format($data['summary']['prev_year_balance'], 2, '.', ' ') }}</td></tr>
+L148:         <tr><td>PAYE/SDL/UIF YEAR {{ $data['tax_year'] }}</td><td class="amount">{{ number_format($data['summary']['current_year_balance'], 2, '.', ' ') }}</td></tr>
+L149:         <tr><td>UNALLOCATED PAYMENTS</td><td class="amount">0.00</td></tr>
+L150:         <tr class="closing"><td>CLOSING BALANCE</td><td class="amount">{{ number_format($data['summary']['closing_balance'], 2, '.', ' ') }}</td></tr>
+L151:     </table>
+L152: 
+L153:     {{-- STATUS --}}
+L154:     <div class="section-header">Status Information</div>
+L155:     <table class="data-table status-table">
+L156:         <thead>
+L157:             <tr><th colspan="2">PAYE</th><th colspan="2">SDL</th><th colspan="2">UIF</th></tr>
+L158:             <tr><th>Status</th><th>Effective Date</th><th>Status</th><th>Effective Date</th><th>Status</th><th>Effective Date</th></tr>
+L159:         </thead>
+L160:         <tbody>
+L161:             <tr>
+L162:                 <td><span class="{{ !empty($data['client']['paye_number']) ? 'status-active' : 'status-not-reg' }}">{{ !empty($data['client']['paye_number']) ? 'ACTIVE' : 'NOT REGISTERED' }}</span></td>
+L163:                 <td>{{ $data['client']['tax_reg_date'] ?? '' }}</td>
+L164:                 <td><span class="{{ !empty($data['client']['sdl_number']) ? 'status-active' : 'status-not-reg' }}">{{ !empty($data['client']['sdl_number']) ? 'ACTIVE' : 'NOT REGISTERED' }}</span></td>
+L165:                 <td>{{ $data['client']['tax_reg_date'] ?? '' }}</td>
+L166:                 <td><span class="{{ !empty($data['client']['uif_number']) ? 'status-active' : 'status-not-reg' }}">{{ !empty($data['client']['uif_number']) ? 'ACTIVE' : 'NOT REGISTERED' }}</span></td>
+L167:                 <td>{{ $data['client']['tax_reg_date'] ?? '' }}</td>
+L168:             </tr>
+L169:         </tbody>
+L170:     </table>
+L171: 
+L172:     {{-- TRANSACTION DETAILS --}}
+L173:     <div class="section-header">Transaction Details</div>
+L174:     <table class="data-table txn-table">
+L175:         <thead>
+L176:             <tr>
+L177:                 <th style="width:60px;">Date</th>
+L178:                 <th style="width:95px;">Transaction<br>Reference</th>
+L179:                 <th>Transaction Description</th>
+L180:                 <th style="width:75px;">Transaction<br>Value</th>
+L181:                 <th style="width:60px;">PAYE</th>
+L182:                 <th style="width:60px;">SDL</th>
+L183:                 <th style="width:60px;">UIF</th>
+L184:                 <th style="width:60px;">OTHER</th>
+L185:                 <th style="width:70px;">Account<br>Balance</th>
+L186:             </tr>
+L187:         </thead>
+L188:         <tbody>
+L189:             @php
+L190:                 $cumPaye = 0; $cumSdl = 0; $cumUif = 0; $cumOther = 0; $cumBal = 0;
+L191:             @endphp
+L192:             @foreach($data['periods'] as $period)
+L193:                 @foreach($period['transactions'] as $txn)
+L194:                     @php
+L195:                         $rowClass = '';
+L196:                         if ($txn['type'] === 'total_liability') $rowClass = 'total-liab';
+L197:                         if ($txn['type'] === 'financial_movement') $rowClass = 'fin-move';
+L198:                     @endphp
+L199:                     <tr class="{{ $rowClass }}">
+L200:                         <td>{{ $txn['date'] ?? '' }}</td>
+L201:                         <td style="font-size:8px;">{{ $txn['reference'] ?? '' }}</td>
+L202:                         <td @if(stripos($txn['description'], 'PAYMENT') !== false) style="color:#d32f2f;font-weight:600;" @endif>{{ $txn['description'] }}</td>
+L203:                         <td class="amount">{!! $txn['value'] < 0 ? '<span class="neg">-' . number_format(abs($txn['value']), 2, '.', ' ') . '</span>' : number_format($txn['value'], 2, '.', ' ') !!}</td>
+L204:                         <td class="amount">{!! $txn['paye'] < 0 ? '<span class="neg">-' . number_format(abs($txn['paye']), 2, '.', ' ') . '</span>' : number_format($txn['paye'], 2, '.', ' ') !!}</td>
+L205:                         <td class="amount">{!! $txn['sdl'] < 0 ? '<span class="neg">-' . number_format(abs($txn['sdl']), 2, '.', ' ') . '</span>' : number_format($txn['sdl'], 2, '.', ' ') !!}</td>
+L206:                         <td class="amount">{!! $txn['uif'] < 0 ? '<span class="neg">-' . number_format(abs($txn['uif']), 2, '.', ' ') . '</span>' : number_format($txn['uif'], 2, '.', ' ') !!}</td>
+L207:                         <td class="amount">{!! ($txn['other'] ?? 0) < 0 ? '<span class="neg">-' . number_format(abs($txn['other'] ?? 0), 2, '.', ' ') . '</span>' : number_format($txn['other'] ?? 0, 2, '.', ' ') !!}</td>
+L208:                         <td class="amount">{!! $txn['balance'] < 0 ? '<span class="neg">-' . number_format(abs($txn['balance']), 2, '.', ' ') . '</span>' : number_format($txn['balance'], 2, '.', ' ') !!}</td>
+L209:                     </tr>
+L210:                 @endforeach
+L211:                 {{-- Period balance --}}
+L212:                 <tr class="period-bal">
+L213:                     <td colspan="4">BALANCE: TAX PERIOD {{ $period['period_label'] }}</td>
+L214:                     <td class="amount">{!! $period['balance_paye'] < 0 ? '<span class="neg">-' . number_format(abs($period['balance_paye']), 2, '.', ' ') . '</span>' : number_format($period['balance_paye'], 2, '.', ' ') !!}</td>
+L215:                     <td class="amount">{!! $period['balance_sdl'] < 0 ? '<span class="neg">-' . number_format(abs($period['balance_sdl']), 2, '.', ' ') . '</span>' : number_format($period['balance_sdl'], 2, '.', ' ') !!}</td>
+L216:                     <td class="amount">{!! $period['balance_uif'] < 0 ? '<span class="neg">-' . number_format(abs($period['balance_uif']), 2, '.', ' ') . '</span>' : number_format($period['balance_uif'], 2, '.', ' ') !!}</td>
+L217:                     <td class="amount">{!! ($period['balance_other'] ?? 0) < 0 ? '<span class="neg">-' . number_format(abs($period['balance_other'] ?? 0), 2, '.', ' ') . '</span>' : number_format($period['balance_other'] ?? 0, 2, '.', ' ') !!}</td>
+L218:                     <td class="amount">{!! $period['balance_total'] < 0 ? '<span class="neg">-' . number_format(abs($period['balance_total']), 2, '.', ' ') . '</span>' : number_format($period['balance_total'], 2, '.', ' ') !!}</td>
+L219:                 </tr>
+L220:                 @php
+L221:                     $cumPaye += $period['balance_paye'];
+L222:                     $cumSdl += $period['balance_sdl'];
+L223:                     $cumUif += $period['balance_uif'];
+L224:                     $cumOther += ($period['balance_other'] ?? 0);
+L225:                     $cumBal += $period['balance_total'];
+L226:                 @endphp
+L227:             @endforeach
+L228:             {{-- Cumulative --}}
+L229:             <tr class="cumulative">
+L230:                 <td colspan="4"><strong>CUMULATIVE BALANCE</strong></td>
+L231:                 <td class="amount">{!! $cumPaye < 0 ? '<span class="neg">-' . number_format(abs($cumPaye), 2, '.', ' ') . '</span>' : number_format($cumPaye, 2, '.', ' ') !!}</td>
+L232:                 <td class="amount">{!! $cumSdl < 0 ? '<span class="neg">-' . number_format(abs($cumSdl), 2, '.', ' ') . '</span>' : number_format($cumSdl, 2, '.', ' ') !!}</td>
+L233:                 <td class="amount">{!! $cumUif < 0 ? '<span class="neg">-' . number_format(abs($cumUif), 2, '.', ' ') . '</span>' : number_format($cumUif, 2, '.', ' ') !!}</td>
+L234:                 <td class="amount">{!! $cumOther < 0 ? '<span class="neg">-' . number_format(abs($cumOther), 2, '.', ' ') . '</span>' : number_format($cumOther, 2, '.', ' ') !!}</td>
+L235:                 <td class="amount">{!! $cumBal < 0 ? '<span class="neg">-' . number_format(abs($cumBal), 2, '.', ' ') . '</span>' : number_format($cumBal, 2, '.', ' ') !!}</td>
+L236:             </tr>
+L237:         </tbody>
+L238:     </table>
+L239: 
+L240:     {{-- AGING --}}
+L241:     <div class="section-header">Ageing - Transactions are aged according to the original due date</div>
+L242:     <table class="data-table aging-table">
+L243:         <thead><tr><th>Current</th><th>30 Days</th><th>60 Days</th><th>90 Days</th><th>120 Days</th><th>Total</th></tr></thead>
+L244:         <tbody><tr>
+L245:             <td>{{ number_format($data['aging']['current'], 2, '.', ' ') }}</td>
+L246:             <td>{{ number_format($data['aging']['days30'], 2, '.', ' ') }}</td>
+L247:             <td>{{ number_format($data['aging']['days60'], 2, '.', ' ') }}</td>
+L248:             <td>{{ number_format($data['aging']['days90'], 2, '.', ' ') }}</td>
+L249:             <td>{{ number_format($data['aging']['days120'], 2, '.', ' ') }}</td>
+L250:             <td><strong>{{ number_format($data['aging']['total'], 2, '.', ' ') }}</strong></td>
+L251:         </tr></tbody>
+L252:     </table>
+L253: 
+L254:     {{-- COMPLIANCE --}}
+L255:     <div class="section-header">Compliance Information</div>
+L256:     <table class="data-table compliance-table">
+L257:         <tr><td class="compliance-label">Active SDL Reference</td><td>Seta Code (SDL)</td><td>{{ $data['client']['sdl_number'] ?: 'N/A' }}</td></tr>
+L258:         <tr><td class="compliance-label">Outstanding EMP201</td><td colspan="2">{{ $data['compliance']['outstanding_emp201'] ?? 'None' }}</td></tr>
+L259:     </table>
+L260: 
+L261: </div>
+L262: 
+L263: {{-- FOOTER --}}
+L264: <table class="sars-footer-table">
+L265:     <tr>
+L266:         <td style="width:33%;">Reference: {{ $data['client']['paye_number'] ?? '' }}</td>
+L267:         <td style="width:33%; text-align:center;">EMPSOA_RO</td>
+L268:         <td style="width:33%; text-align:right;">{{ $data['today'] }}</td>
+L269:     </tr>
+L270: </table>
+L271: 
+L272: </body>
+L273: </html>
+L274: 
+
+================================================================================
+FILE: CIMS_EMP201/Routes/web.php
+================================================================================
+Size: 2087 bytes
+L1: <?php
+L2: 
+L3: use Illuminate\Support\Facades\Route;
+L4: 
+L5: // Index / list
+L6: Route::get('/', 'Emp201Controller@index')->name('index');
+L7: 
+L8: // Pivot Table
+L9: Route::get('/pivot', 'Emp201Controller@pivot')->name('pivot');
+L10: 
+L11: // Export pivot to Excel (.xlsx)
+L12: Route::get('/pivot/export-excel', 'Emp201Controller@exportPivotExcel')->name('pivot.export-excel');
+L13: 
+L14: // Statement of Account (EMPSA)
+L15: Route::get('/statement', 'Emp201Controller@statement')->name('statement');
+L16: 
+L17: // AJAX - get statement data
+L18: Route::get('/api/statement-data', 'Emp201Controller@apiStatementData')->name('api.statement-data');
+L19: 
+L20: // Export statement to Excel (.xlsx)
+L21: Route::get('/statement/export-excel', 'Emp201Controller@exportStatementExcel')->name('statement.export-excel');
+L22: 
+L23: // Generate statement PDF (stores to document system, returns document viewer URL)
+L24: Route::post('/statement/generate-pdf', 'Emp201Controller@generateStatementPdf')->name('statement.generate-pdf');
+L25: 
+L26: // Send statement via email
+L27: Route::post('/statement/send-email', 'Emp201Controller@sendStatementEmail')->name('statement.send-email');
+L28: 
+L29: // Create
+L30: Route::get('/create', 'Emp201Controller@create')->name('create');
+L31: Route::post('/store', 'Emp201Controller@store')->name('store');
+L32: 
+L33: // Show
+L34: Route::get('/{id}', 'Emp201Controller@show')->name('show');
+L35: 
+L36: // Edit
+L37: Route::get('/{id}/edit', 'Emp201Controller@edit')->name('edit');
+L38: Route::put('/{id}', 'Emp201Controller@update')->name('update');
+L39: 
+L40: // Status change
+L41: Route::post('/{id}/status', 'Emp201Controller@updateStatus')->name('status');
+L42: 
+L43: // Delete
+L44: Route::delete('/{id}', 'Emp201Controller@destroy')->name('destroy');
+L45: 
+L46: // AJAX - get client details
+L47: Route::get('/api/client/{id}', 'Emp201Controller@apiClientDetail')->name('api.client');
+L48: 
+L49: // AJAX - get periods
+L50: Route::get('/api/periods', 'Emp201Controller@apiPeriods')->name('api.periods');
+L51: 
+L52: // AJAX - get SARS representative for a client
+L53: Route::get('/api/sars-representative/{clientId}', 'Emp201Controller@apiSarsRepresentative')->name('api.sars-representative');
+L54: 
+L55: // AJAX - get pivot data
+L56: Route::get('/api/pivot-data', 'Emp201Controller@apiPivotData')->name('api.pivot-data');
+L57: 
+
+================================================================================
+FILE: CustomerStatements/Http/Controllers/StatementController.php
+================================================================================
+Size: 8202 bytes
+L1: <?php
+L2: 
+L3: namespace Modules\CustomerStatements\Http\Controllers;
+L4: 
+L5: use App\Http\Controllers\Controller;
+L6: use Illuminate\Http\Request;
+L7: use Modules\CustomerStatements\Services\StatementService;
+L8: use Modules\CustomerStatements\Services\AgingService;
+L9: use Modules\CustomerStatements\Mail\StatementMail;
+L10: use Illuminate\Support\Facades\Mail;
+L11: use Carbon\Carbon;
+L12: use Barryvdh\DomPDF\Facade\Pdf;
+L13: 
+L14: class StatementController extends Controller
+L15: {
+L16:     protected StatementService $statementService;
+L17:     protected AgingService $agingService;
+L18: 
+L19:     public function __construct(StatementService $statementService, AgingService $agingService)
+L20:     {
+L21:         $this->statementService = $statementService;
+L22:         $this->agingService = $agingService;
+L23:     }
+L24: 
+L25:     /**
+L26:      * Show the main statement page with client selector and date range pickers.
+L27:      *
+L28:      * GET /statements
+L29:      */
+L30:     public function index()
+L31:     {
+L32:         $clients = $this->statementService->getClients();
+L33: 
+L34:         // Default date range: first day of current month to today
+L35:         $defaultFrom = Carbon::now()->startOfMonth()->format('Y-m-d');
+L36:         $defaultTo = Carbon::now()->format('Y-m-d');
+L37: 
+L38:         return view('statements::index', [
+L39:             'clients' => $clients,
+L40:             'defaultFrom' => $defaultFrom,
+L41:             'defaultTo' => $defaultTo,
+L42:         ]);
+L43:     }
+L44: 
+L45:     /**
+L46:      * Generate a statement for the selected client and date range.
+L47:      *
+L48:      * POST /statements/generate
+L49:      */
+L50:     public function generate(Request $request)
+L51:     {
+L52:         $request->validate([
+L53:             'client_id' => 'required|integer|exists:clients,client_id',
+L54:             'from_date' => 'required|date',
+L55:             'to_date' => 'required|date|after_or_equal:from_date',
+L56:         ]);
+L57: 
+L58:         $clientId = (int) $request->input('client_id');
+L59:         $fromDate = Carbon::parse($request->input('from_date'))->format('Y-m-d');
+L60:         $toDate = Carbon::parse($request->input('to_date'))->format('Y-m-d');
+L61: 
+L62:         // Generate the statement data
+L63:         $statementData = $this->statementService->generateStatement($clientId, $fromDate, $toDate);
+L64: 
+L65:         // Generate aging data
+L66:         $agingData = $this->agingService->calculateAging($clientId, $toDate);
+L67: 
+L68:         // If AJAX request, return JSON for inline rendering
+L69:         if ($request->ajax() || $request->wantsJson()) {
+L70:             return response()->json(array_merge($statementData, [
+L71:                 'aging' => $agingData,
+L72:             ]));
+L73:         }
+L74: 
+L75:         // Normal request - return full page
+L76:         $clients = $this->statementService->getClients();
+L77: 
+L78:         return view('statements::statement', array_merge($statementData, [
+L79:             'aging' => $agingData,
+L80:             'clients' => $clients,
+L81:         ]));
+L82:     }
+L83: 
+L84:     /**
+L85:      * Generate and download a PDF statement.
+L86:      *
+L87:      * GET /statements/{client_id}/pdf?from=&to=
+L88:      */
+L89:     public function pdf($clientId, Request $request)
+L90:     {
+L91:         $request->validate([
+L92:             'from' => 'required|date',
+L93:             'to' => 'required|date|after_or_equal:from',
+L94:         ]);
+L95: 
+L96:         $clientId = (int) $clientId;
+L97:         $fromDate = Carbon::parse($request->input('from'))->format('Y-m-d');
+L98:         $toDate = Carbon::parse($request->input('to'))->format('Y-m-d');
+L99: 
+L100:         // Generate the statement data
+L101:         $statementData = $this->statementService->generateStatement($clientId, $fromDate, $toDate);
+L102: 
+L103:         // Generate aging data
+L104:         $agingData = $this->agingService->calculateAging($clientId, $toDate);
+L105: 
+L106:         // Load logo as base64 for embedding in PDF
+L107:         $logoBase64 = $this->getLogoBase64();
+L108:         $bankingBase64 = $this->getBankingBase64();
+L109: 
+L110:         $data = array_merge($statementData, [
+L111:             'aging' => $agingData,
+L112:             'logoBase64' => $logoBase64,
+L113:             'bankingBase64' => $bankingBase64,
+L114:         ]);
+L115: 
+L116:         $pdf = Pdf::loadView('statements::pdf', $data);
+L117:         $pdf->setPaper('A4', 'portrait');
+L118:         $pdf->setOptions([
+L119:             'isHtml5ParserEnabled' => true,
+L120:             'isRemoteEnabled' => true,
+L121:             'defaultFont' => 'sans-serif',
+L122:         ]);
+L123: 
+L124:         $clientName = $statementData['client']->client_company_name ?? 'Client';
+L125:         $filename = 'Statement_' . str_replace(' ', '_', $clientName) . '_' . $fromDate . '_to_' . $toDate . '.pdf';
+L126: 
+L127:         return $pdf->stream($filename);
+L128:     }
+L129: 
+L130:     /**
+L131:      * Email the statement to the client.
+L132:      *
+L133:      * POST /statements/{client_id}/email
+L134:      */
+L135:     public function email($clientId, Request $request)
+L136:     {
+L137:         $request->validate([
+L138:             'from_date' => 'required|date',
+L139:             'to_date' => 'required|date|after_or_equal:from_date',
+L140:         ]);
+L141: 
+L142:         $clientId = (int) $clientId;
+L143:         $fromDate = Carbon::parse($request->input('from_date'))->format('Y-m-d');
+L144:         $toDate = Carbon::parse($request->input('to_date'))->format('Y-m-d');
+L145: 
+L146:         // Get the client email
+L147:         $clientEmail = $this->statementService->getClientEmail($clientId);
+L148: 
+L149:         if (empty($clientEmail)) {
+L150:             if ($request->ajax() || $request->wantsJson()) {
+L151:                 return response()->json(['error' => 'No email address found for this client.'], 422);
+L152:             }
+L153:             return redirect()->back()->with('error', 'No email address found for this client. Please add an email address to the client account owner.');
+L154:         }
+L155: 
+L156:         // Generate the statement data
+L157:         $statementData = $this->statementService->generateStatement($clientId, $fromDate, $toDate);
+L158:         $agingData = $this->agingService->calculateAging($clientId, $toDate);
+L159: 
+L160:         // Load logo as base64
+L161:         $logoBase64 = $this->getLogoBase64();
+L162:         $bankingBase64 = $this->getBankingBase64();
+L163: 
+L164:         $data = array_merge($statementData, [
+L165:             'aging' => $agingData,
+L166:             'logoBase64' => $logoBase64,
+L167:             'bankingBase64' => $bankingBase64,
+L168:         ]);
+L169: 
+L170:         // Generate the PDF
+L171:         $pdf = Pdf::loadView('statements::pdf', $data);
+L172:         $pdf->setPaper('A4', 'portrait');
+L173:         $pdf->setOptions([
+L174:             'isHtml5ParserEnabled' => true,
+L175:             'isRemoteEnabled' => true,
+L176:             'defaultFont' => 'sans-serif',
+L177:         ]);
+L178: 
+L179:         $clientName = $statementData['client']->client_company_name ?? 'Client';
+L180:         $filename = 'Statement_' . str_replace(' ', '_', $clientName) . '_' . $fromDate . '_to_' . $toDate . '.pdf';
+L181:         $pdfContent = $pdf->output();
+L182: 
+L183:         // Format period for subject
+L184:         $periodFrom = Carbon::parse($fromDate)->format('d-m-Y');
+L185:         $periodTo = Carbon::parse($toDate)->format('d-m-Y');
+L186:         $companyName = $statementData['settings']['settings_company_name'];
+L187: 
+L188:         // Send the email
+L189:         Mail::to($clientEmail)->send(new StatementMail(
+L190:             $pdfContent,
+L191:             $filename,
+L192:             $clientName,
+L193:             $companyName,
+L194:             $periodFrom,
+L195:             $periodTo,
+L196:             $statementData['closing_balance'],
+L197:             $statementData['settings']['settings_system_currency_symbol'] ?? 'R '
+L198:         ));
+L199: 
+L200:         if ($request->ajax() || $request->wantsJson()) {
+L201:             return response()->json(['success' => true, 'message' => 'Statement emailed successfully to ' . $clientEmail]);
+L202:         }
+L203: 
+L204:         return redirect()->back()->with('success', 'Statement emailed successfully to ' . $clientEmail);
+L205:     }
+L206: 
+L207:     /**
+L208:      * Load the company logo as a base64 string for PDF embedding.
+L209:      *
+L210:      * @return string|null
+L211:      */
+L212:     protected function getLogoBase64(): ?string
+L213:     {
+L214:         $logoPath = public_path('storage/logos/app/cims_inv_logo.png');
+L215: 
+L216:         if (file_exists($logoPath)) {
+L217:             $logoData = file_get_contents($logoPath);
+L218:             return 'data:image/png;base64,' . base64_encode($logoData);
+L219:         }
+L220: 
+L221:         return null;
+L222:     }
+L223: 
+L224:     /**
+L225:      * Load the banking details image as a base64 string for PDF embedding.
+L226:      *
+L227:      * @return string|null
+L228:      */
+L229:     protected function getBankingBase64(): ?string
+L230:     {
+L231:         $bankingPath = public_path('storage/logos/app/banking_atp.png');
+L232: 
+L233:         if (file_exists($bankingPath)) {
+L234:             $bankingData = file_get_contents($bankingPath);
+L235:             return 'data:image/png;base64,' . base64_encode($bankingData);
+L236:         }
+L237: 
+L238:         return null;
+L239:     }
+L240: }
+L241: 
+
+================================================================================
+FILE: CustomerStatements/Resources/views/pdf.blade.php
+================================================================================
+Size: 18073 bytes
+L1: <!DOCTYPE html>
+L2: <html lang="en">
+L3: <head>
+L4:     <meta charset="UTF-8">
+L5:     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+L6:     <title>Statement of Account - {{ $client->client_company_name ?? 'Client' }}</title>
+L7:     <style>
+L8:         /* ============================================================
+L9:            PDF Statement - Following EMPSA table-based layout pattern
+L10:            Uses tables for all layout (DomPDF handles tables reliably)
+L11:            ============================================================ */
+L12: 
+L13:         @page {
+L14:             margin: 15mm 18mm 15mm 18mm;
+L15:         }
+L16: 
+L17:         * { margin: 0; padding: 0; box-sizing: border-box; }
+L18: 
+L19:         body {
+L20:             font-family: 'DejaVu Sans', Verdana, Geneva, sans-serif;
+L21:             font-size: 10px;
+L22:             color: #333;
+L23:             line-height: 1.4;
+L24:         }
+L25: 
+L26:         /* Layout tables - no borders, just for positioning */
+L27:         .layout-table {
+L28:             width: 100%;
+L29:             border-collapse: collapse;
+L30:         }
+L31:         .layout-table td {
+L32:             vertical-align: top;
+L33:             border: none;
+L34:             padding: 0;
+L35:         }
+L36: 
+L37:         /* Data tables */
+L38:         table.data-table {
+L39:             width: 100%;
+L40:             border-collapse: collapse;
+L41:             font-size: 9px;
+L42:         }
+L43: 
+L44:         /* Page break prevention */
+L45:         .no-break { page-break-inside: avoid; }
+L46:     </style>
+L47: </head>
+L48: <body>
+L49: 
+L50:     @php
+L51:         $currency = $settings['settings_system_currency_symbol'] ?? 'R ';
+L52: 
+L53:         $fmt = function($amount) use ($currency) {
+L54:             return $currency . number_format($amount, 2, '.', ' ');
+L55:         };
+L56: 
+L57:         $fmtDate = function($date) {
+L58:             if (empty($date)) return '';
+L59:             try {
+L60:                 return \Carbon\Carbon::parse($date)->format('d/m/Y');
+L61:             } catch (\Exception $e) {
+L62:                 return $date;
+L63:             }
+L64:         };
+L65:     @endphp
+L66: 
+L67:     <!-- ============================================================
+L68:          HEADER: Logo left, Company right (table-based like EMPSA)
+L69:          ============================================================ -->
+L70:     <table class="layout-table" style="margin-bottom: 8px;">
+L71:         <tr>
+L72:             <td style="width: 35%;">
+L73:                 @if(!empty($logoBase64))
+L74:                     <img src="{{ $logoBase64 }}" alt="Logo" style="max-height: 60px; max-width: 180px;">
+L75:                 @endif
+L76:             </td>
+L77:             <td style="width: 65%; text-align: right; overflow: hidden;">
+L78:                 <div style="font-size: 10px; font-weight: bold; color: #0d3d56; margin-bottom: 3px;">{{ $settings['settings_company_name'] }}</div>
+L79:                 <div style="font-size: 7.5px; color: #555; line-height: 1.5;">
+L80:                     {{ $settings['settings_company_address_line_1'] }}<br>
+L81:                     {{ $settings['settings_company_city'] }}, {{ $settings['settings_company_state'] }}<br>
+L82:                     {{ $settings['settings_company_zipcode'] }}, {{ $settings['settings_company_country'] }}<br>
+L83:                     {{ $settings['settings_company_customfield_1'] }}
+L84:                 </div>
+L85:             </td>
+L86:         </tr>
+L87:     </table>
+L88: 
+L89:     <!-- Divider -->
+L90:     <div style="border-top: 3px solid #17A2B8; margin: 6px 0 10px 0;"></div>
+L91: 
+L92:     <!-- ============================================================
+L93:          TITLE BANNER
+L94:          ============================================================ -->
+L95:     <table class="layout-table" style="background: #17A2B8; margin-bottom: 12px;">
+L96:         <tr>
+L97:             <td style="text-align: center; padding: 8px 10px;">
+L98:                 <div style="font-size: 16px; font-weight: bold; letter-spacing: 3px; text-transform: uppercase; color: #fff;">Statement of Account</div>
+L99:                 <div style="font-size: 9px; color: #e0f7fa; margin-top: 3px;">Period: {{ $fmtDate($from_date) }} to {{ $fmtDate($to_date) }}</div>
+L100:             </td>
+L101:         </tr>
+L102:     </table>
+L103: 
+L104:     <!-- ============================================================
+L105:          CLIENT INFO + STATEMENT META (table-based like EMPSA)
+L106:          ============================================================ -->
+L107:     <table class="layout-table" style="margin-bottom: 12px;">
+L108:         <tr>
+L109:             <td style="width: 55%; padding-right: 10px;">
+L110:                 <div style="background: #f8f9fa; border: 1px solid #e0e0e0; padding: 10px 12px;">
+L111:                     <div style="font-size: 8px; font-weight: bold; color: #17A2B8; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Bill To:</div>
+L112:                     <div style="font-size: 10px; font-weight: bold; color: #0d3d56; margin-bottom: 3px;">{{ $client->client_company_name }}</div>
+L113:                     <div style="font-size: 8px; color: #555; line-height: 1.5;">
+L114:                         @if($client_code)
+L115:                             Client Code: {{ $client_code }}<br>
+L116:                         @endif
+L117:                         @php
+L118:                             $line1Parts = [];
+L119:                             if($client->client_billing_street) $line1Parts[] = $client->client_billing_street;
+L120:                             if($client->client_billing_zip) $line1Parts[] = $client->client_billing_zip;
+L121:                             $line2Parts = [];
+L122:                             if($client->client_billing_city) $line2Parts[] = $client->client_billing_city;
+L123:                             if($client->client_billing_state) $line2Parts[] = $client->client_billing_state;
+L124:                             if($client->client_billing_country) $line2Parts[] = $client->client_billing_country;
+L125:                         @endphp
+L126:                         @if(count($line1Parts))
+L127:                             {{ implode(', ', $line1Parts) }}<br>
+L128:                         @endif
+L129:                         @if(count($line2Parts))
+L130:                             {{ implode(', ', $line2Parts) }}
+L131:                         @endif
+L132:                         @if($client->client_vat)
+L133:                             <br>VAT: {{ $client->client_vat }}
+L134:                         @endif
+L135:                         @if($client->client_phone)
+L136:                             <br>Tel: {{ $client->client_phone }}
+L137:                         @endif
+L138:                         @if($client_email)
+L139:                             <br>Email: {{ $client_email }}
+L140:                         @endif
+L141:                     </div>
+L142:                 </div>
+L143:             </td>
+L144:             <td style="width: 45%; padding-left: 10px;">
+L145:                 <table class="layout-table" style="border: 1px solid #c0d0e0;">
+L146:                     <tr>
+L147:                         <td style="padding: 4px 8px; font-size: 8px; font-weight: bold; color: #555; border-bottom: 1px solid #e8eef4;">Statement Date:</td>
+L148:                         <td style="padding: 4px 8px; font-size: 8px; text-align: right; color: #333; font-weight: 600; border-bottom: 1px solid #e8eef4;">{{ $fmtDate(now()->format('Y-m-d')) }}</td>
+L149:                     </tr>
+L150:                     <tr>
+L151:                         <td style="padding: 4px 8px; font-size: 8px; font-weight: bold; color: #555; border-bottom: 1px solid #e8eef4;">From:</td>
+L152:                         <td style="padding: 4px 8px; font-size: 8px; text-align: right; color: #333; font-weight: 600; border-bottom: 1px solid #e8eef4;">{{ $fmtDate($from_date) }}</td>
+L153:                     </tr>
+L154:                     <tr>
+L155:                         <td style="padding: 4px 8px; font-size: 8px; font-weight: bold; color: #555; border-bottom: 1px solid #e8eef4;">To:</td>
+L156:                         <td style="padding: 4px 8px; font-size: 8px; text-align: right; color: #333; font-weight: 600; border-bottom: 1px solid #e8eef4;">{{ $fmtDate($to_date) }}</td>
+L157:                     </tr>
+L158:                     <tr>
+L159:                         <td style="padding: 5px 8px; font-size: 9px; font-weight: bold; background: #0d3d56; color: #fff; text-align: right;">Balance Due:</td>
+L160:                         <td style="padding: 5px 8px; font-size: 9px; font-weight: bold; background: #0d3d56; color: #fff; text-align: right;">{{ $fmt($closing_balance) }}</td>
+L161:                     </tr>
+L162:                 </table>
+L163:             </td>
+L164:         </tr>
+L165:     </table>
+L166: 
+L167:     <!-- ============================================================
+L168:          TRANSACTION TABLE (following EMPSA txn-table pattern)
+L169:          ============================================================ -->
+L170:     <table class="data-table" style="margin-bottom: 0;">
+L171:         <thead>
+L172:             <tr>
+L173:                 <th style="width: 65px; background: #1a1a2e; color: #fff; padding: 6px 5px; font-size: 7px; font-weight: bold; text-transform: uppercase; text-align: left; border: 1px solid #111;">Date</th>
+L174:                 <th style="width: 50px; background: #1a1a2e; color: #fff; padding: 6px 5px; font-size: 7px; font-weight: bold; text-transform: uppercase; text-align: left; border: 1px solid #111;">Type</th>
+L175:                 <th style="width: 80px; background: #1a1a2e; color: #fff; padding: 6px 5px; font-size: 7px; font-weight: bold; text-transform: uppercase; text-align: left; border: 1px solid #111;">Reference</th>
+L176:                 <th style="background: #1a1a2e; color: #fff; padding: 6px 5px; font-size: 7px; font-weight: bold; text-transform: uppercase; text-align: left; border: 1px solid #111;">Description</th>
+L177:                 <th style="width: 70px; background: #1a1a2e; color: #fff; padding: 6px 5px; font-size: 7px; font-weight: bold; text-transform: uppercase; text-align: right; border: 1px solid #111;">Debit</th>
+L178:                 <th style="width: 70px; background: #1a1a2e; color: #fff; padding: 6px 5px; font-size: 7px; font-weight: bold; text-transform: uppercase; text-align: right; border: 1px solid #111;">Credit</th>
+L179:                 <th style="width: 75px; background: #1a1a2e; color: #fff; padding: 6px 5px; font-size: 7px; font-weight: bold; text-transform: uppercase; text-align: right; border: 1px solid #111;">Balance</th>
+L180:             </tr>
+L181:         </thead>
+L182:         <tbody>
+L183:             <!-- Opening Balance -->
+L184:             <tr style="background: #e8f4f8;">
+L185:                 <td style="padding: 5px 5px; font-size: 9px; font-weight: bold; border-bottom: 2px solid #17A2B8; border-left: 1px solid #dde4ec;">{{ $fmtDate($from_date) }}</td>
+L186:                 <td style="padding: 5px 5px; font-size: 9px; font-weight: bold; border-bottom: 2px solid #17A2B8;"></td>
+L187:                 <td style="padding: 5px 5px; font-size: 9px; font-weight: bold; border-bottom: 2px solid #17A2B8;"></td>
+L188:                 <td style="padding: 5px 5px; font-size: 9px; font-weight: bold; border-bottom: 2px solid #17A2B8; color: #0d3d56;">Opening Balance</td>
+L189:                 <td style="padding: 5px 5px; font-size: 9px; font-weight: bold; border-bottom: 2px solid #17A2B8; text-align: right;"></td>
+L190:                 <td style="padding: 5px 5px; font-size: 9px; font-weight: bold; border-bottom: 2px solid #17A2B8; text-align: right;"></td>
+L191:                 <td style="padding: 5px 5px; font-size: 9px; font-weight: bold; border-bottom: 2px solid #17A2B8; text-align: right; border-right: 1px solid #dde4ec;">{{ $fmt($opening_balance) }}</td>
+L192:             </tr>
+L193: 
+L194:             @php $rowIndex = 0; @endphp
+L195:             @foreach($transactions as $txn)
+L196:             <tr style="{{ $rowIndex % 2 == 0 ? 'background: #fafbfc;' : '' }}">
+L197:                 <td style="padding: 5px 5px; font-size: 9px; border-bottom: 1px solid #e9ecef; border-left: 1px solid #dde4ec;">{{ $fmtDate($txn['date']) }}</td>
+L198:                 <td style="padding: 5px 5px; font-size: 9px; border-bottom: 1px solid #e9ecef;">
+L199:                     <span style="color: {{ $txn['type'] === 'Invoice' ? '#17A2B8' : '#28a745' }}; font-weight: bold;">{{ $txn['type'] }}</span>
+L200:                 </td>
+L201:                 <td style="padding: 5px 5px; font-size: 9px; border-bottom: 1px solid #e9ecef;">{{ $txn['reference'] }}</td>
+L202:                 <td style="padding: 5px 5px; font-size: 9px; border-bottom: 1px solid #e9ecef;">{{ $txn['description'] }}</td>
+L203:                 <td style="padding: 5px 5px; font-size: 9px; border-bottom: 1px solid #e9ecef; text-align: right; white-space: nowrap;">{{ $txn['debit'] > 0 ? $fmt($txn['debit']) : '' }}</td>
+L204:                 <td style="padding: 5px 5px; font-size: 9px; border-bottom: 1px solid #e9ecef; text-align: right; white-space: nowrap;">{{ $txn['credit'] > 0 ? $fmt($txn['credit']) : '' }}</td>
+L205:                 <td style="padding: 5px 5px; font-size: 9px; border-bottom: 1px solid #e9ecef; text-align: right; white-space: nowrap; border-right: 1px solid #dde4ec;">{{ $fmt($txn['balance']) }}</td>
+L206:             </tr>
+L207:             @php $rowIndex++; @endphp
+L208:             @endforeach
+L209: 
+L210:             <!-- Totals row -->
+L211:             <tr style="background: #f0f0f0; border-top: 2px solid #333;">
+L212:                 <td colspan="4" style="padding: 6px 5px; font-size: 9px; font-weight: bold; text-align: right; border-top: 2px solid #333; border-left: 1px solid #dde4ec;">Totals:</td>
+L213:                 <td style="padding: 6px 5px; font-size: 9px; font-weight: bold; text-align: right; border-top: 2px solid #333; white-space: nowrap;">{{ $fmt($total_debits) }}</td>
+L214:                 <td style="padding: 6px 5px; font-size: 9px; font-weight: bold; text-align: right; border-top: 2px solid #333; white-space: nowrap;">{{ $fmt($total_credits) }}</td>
+L215:                 <td style="padding: 6px 5px; font-size: 9px; border-top: 2px solid #333; border-right: 1px solid #dde4ec;"></td>
+L216:             </tr>
+L217: 
+L218:             <!-- Closing balance -->
+L219:             <tr style="background: #0d3d56;">
+L220:                 <td colspan="6" style="padding: 8px 10px; font-size: 10px; font-weight: bold; color: #fff; text-align: right; border: 1px solid #0a2e40;">Closing Balance:</td>
+L221:                 <td style="padding: 8px 10px; font-size: 10px; font-weight: bold; color: #fff; text-align: right; white-space: nowrap; border: 1px solid #0a2e40;">{{ $fmt($closing_balance) }}</td>
+L222:             </tr>
+L223:         </tbody>
+L224:     </table>
+L225: 
+L226:     <!-- ============================================================
+L227:          AGING SUMMARY (following EMPSA aging-table pattern)
+L228:          ============================================================ -->
+L229:     @if(isset($aging))
+L230:     <div class="no-break" style="margin-top: 14px;">
+L231:         <div style="background: #17A2B8; color: #fff; padding: 6px 12px; font-size: 10px; font-weight: bold; margin-bottom: 0;">Aging Summary</div>
+L232:         <table class="data-table">
+L233:             <thead>
+L234:                 <tr>
+L235:                     <th style="background: #17A2B8; color: #fff; padding: 6px 6px; text-align: center; font-weight: bold; font-size: 7px; text-transform: uppercase; border: 1px solid #138496;">90+ Days</th>
+L236:                     <th style="background: #17A2B8; color: #fff; padding: 6px 6px; text-align: center; font-weight: bold; font-size: 7px; text-transform: uppercase; border: 1px solid #138496;">60 Days (61-90)</th>
+L237:                     <th style="background: #17A2B8; color: #fff; padding: 6px 6px; text-align: center; font-weight: bold; font-size: 7px; text-transform: uppercase; border: 1px solid #138496;">30 Days (31-60)</th>
+L238:                     <th style="background: #17A2B8; color: #fff; padding: 6px 6px; text-align: center; font-weight: bold; font-size: 7px; text-transform: uppercase; border: 1px solid #138496;">Current (0-30 Days)</th>
+L239:                     <th style="background: #17A2B8; color: #fff; padding: 6px 6px; text-align: center; font-weight: bold; font-size: 7px; text-transform: uppercase; border: 1px solid #138496;">Total Outstanding</th>
+L240:                 </tr>
+L241:             </thead>
+L242:             <tbody>
+L243:                 <tr>
+L244:                     <td style="padding: 8px 6px; text-align: center; font-weight: bold; font-size: 9px; border: 1px solid #e0e0e0; background: #f8d7da; color: #721c24;">{{ $fmt($aging['buckets']['90_plus']) }}</td>
+L245:                     <td style="padding: 8px 6px; text-align: center; font-weight: bold; font-size: 9px; border: 1px solid #e0e0e0; background: #fce4d6; color: #c0392b;">{{ $fmt($aging['buckets']['60_days']) }}</td>
+L246:                     <td style="padding: 8px 6px; text-align: center; font-weight: bold; font-size: 9px; border: 1px solid #e0e0e0; background: #fff3cd; color: #856404;">{{ $fmt($aging['buckets']['30_days']) }}</td>
+L247:                     <td style="padding: 8px 6px; text-align: center; font-weight: bold; font-size: 9px; border: 1px solid #e0e0e0; background: #d4edda; color: #155724;">{{ $fmt($aging['buckets']['current']) }}</td>
+L248:                     <td style="padding: 8px 6px; text-align: center; font-weight: bold; font-size: 11px; border: 1px solid #e0e0e0; background: #0d3d56; color: #fff;">{{ $fmt($aging['total']) }}</td>
+L249:                 </tr>
+L250:             </tbody>
+L251:         </table>
+L252:     </div>
+L253:     @endif
+L254: 
+L255:     <!-- ============================================================
+L256:          BANKING DETAILS
+L257:          ============================================================ -->
+L258:     <div class="no-break" style="margin-top: 14px; padding-top: 8px; border-top: 2px solid #17A2B8;">
+L259:         <div style="font-size: 10px; font-weight: bold; color: #0d3d56; margin-bottom: 6px;">Banking Details</div>
+L260:         @if(!empty($bankingBase64))
+L261:             <img src="{{ $bankingBase64 }}" alt="Banking Details" style="max-width: 350px;">
+L262:         @else
+L263:             <p style="font-size: 9px; color: #666;">Please contact us for banking details.</p>
+L264:         @endif
+L265:     </div>
+L266: 
+L267:     <!-- ============================================================
+L268:          FOOTER (table-based like EMPSA)
+L269:          ============================================================ -->
+L270:     <table class="layout-table" style="margin-top: 14px; border-top: 1px solid #e0e0e0;">
+L271:         <tr>
+L272:             <td style="padding: 6px 0; font-size: 7px; color: #888;">{{ $settings['settings_company_name'] }}</td>
+L273:             <td style="padding: 6px 0; font-size: 7px; color: #888; text-align: center;">{{ $settings['settings_company_customfield_1'] }}</td>
+L274:             <td style="padding: 6px 0; font-size: 7px; color: #888; text-align: right;">Generated: {{ $fmtDate(now()->format('Y-m-d')) }}. E&amp;OE.</td>
+L275:         </tr>
+L276:     </table>
+L277: 
+L278: </body>
+L279: </html>
+L280: 
+
+================================================================================
+FILE: CustomerStatements/Resources/views/statement.blade.php
+================================================================================
+Size: 21143 bytes
+L1: @extends('layout.wrapper')
+L2: 
+L3: @section('settings-css')
+L4: <link href="{{ asset('vendor/select2/css/select2.min.css') }}" rel="stylesheet" />
+L5: <style>
+L6:     /* Statement page styling */
+L7:     .statement-container {
+L8:         background: #fff;
+L9:         border-radius: 8px;
+L10:         box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+L11:         padding: 0;
+L12:         overflow: hidden;
+L13:     }
+L14: 
+L15:     /* Header bar */
+L16:     .statement-top-bar {
+L17:         background: linear-gradient(135deg, #17A2B8, #0d3d56);
+L18:         padding: 20px 30px;
+L19:         color: #fff;
+L20:         display: flex;
+L21:         justify-content: space-between;
+L22:         align-items: center;
+L23:     }
+L24:     .statement-top-bar h4 {
+L25:         color: #fff;
+L26:         margin: 0;
+L27:         font-weight: 600;
+L28:     }
+L29:     .statement-top-bar .btn-group .btn {
+L30:         border-radius: 5px;
+L31:         margin-left: 8px;
+L32:         font-weight: 500;
+L33:     }
+L34:     .btn-pdf {
+L35:         background: #dc3545;
+L36:         border-color: #dc3545;
+L37:         color: #fff;
+L38:     }
+L39:     .btn-pdf:hover {
+L40:         background: #c82333;
+L41:         border-color: #bd2130;
+L42:         color: #fff;
+L43:     }
+L44:     .btn-email-stmt {
+L45:         background: #28a745;
+L46:         border-color: #28a745;
+L47:         color: #fff;
+L48:     }
+L49:     .btn-email-stmt:hover {
+L50:         background: #218838;
+L51:         border-color: #1e7e34;
+L52:         color: #fff;
+L53:     }
+L54:     .btn-print {
+L55:         background: #6c757d;
+L56:         border-color: #6c757d;
+L57:         color: #fff;
+L58:     }
+L59:     .btn-print:hover {
+L60:         background: #5a6268;
+L61:         border-color: #545b62;
+L62:         color: #fff;
+L63:     }
+L64:     .btn-back {
+L65:         background: rgba(255,255,255,0.2);
+L66:         border-color: rgba(255,255,255,0.4);
+L67:         color: #fff;
+L68:     }
+L69:     .btn-back:hover {
+L70:         background: rgba(255,255,255,0.3);
+L71:         color: #fff;
+L72:     }
+L73: 
+L74:     /* Statement body */
+L75:     .statement-body {
+L76:         padding: 30px;
+L77:     }
+L78: 
+L79:     /* Company header */
+L80:     .company-header {
+L81:         display: flex;
+L82:         justify-content: space-between;
+L83:         align-items: flex-start;
+L84:         margin-bottom: 30px;
+L85:         padding-bottom: 20px;
+L86:         border-bottom: 3px solid #17A2B8;
+L87:     }
+L88:     .company-logo img {
+L89:         max-height: 80px;
+L90:         max-width: 250px;
+L91:     }
+L92:     .company-info {
+L93:         text-align: right;
+L94:     }
+L95:     .company-info h4 {
+L96:         color: #0d3d56;
+L97:         font-weight: 700;
+L98:         margin-bottom: 5px;
+L99:     }
+L100:     .company-info p {
+L101:         margin: 0;
+L102:         color: #555;
+L103:         font-size: 13px;
+L104:         line-height: 1.6;
+L105:     }
+L106: 
+L107:     /* Statement title */
+L108:     .statement-title {
+L109:         text-align: center;
+L110:         margin: 20px 0;
+L111:     }
+L112:     .statement-title h2 {
+L113:         color: #0d3d56;
+L114:         font-weight: 700;
+L115:         font-size: 26px;
+L116:         margin-bottom: 5px;
+L117:         text-transform: uppercase;
+L118:         letter-spacing: 2px;
+L119:     }
+L120:     .statement-title .period {
+L121:         color: #666;
+L122:         font-size: 14px;
+L123:     }
+L124: 
+L125:     /* Client details */
+L126:     .client-details-box {
+L127:         background: #f8f9fa;
+L128:         border: 1px solid #e9ecef;
+L129:         border-radius: 6px;
+L130:         padding: 20px;
+L131:         margin-bottom: 25px;
+L132:     }
+L133:     .client-details-box h5 {
+L134:         color: #0d3d56;
+L135:         font-weight: 600;
+L136:         margin-bottom: 12px;
+L137:         font-size: 15px;
+L138:     }
+L139:     .client-details-box table td {
+L140:         padding: 3px 10px 3px 0;
+L141:         font-size: 13px;
+L142:         color: #333;
+L143:         vertical-align: top;
+L144:     }
+L145:     .client-details-box table td:first-child {
+L146:         font-weight: 600;
+L147:         color: #555;
+L148:         width: 130px;
+L149:     }
+L150: 
+L151:     /* Transaction table */
+L152:     .statement-table {
+L153:         width: 100%;
+L154:         border-collapse: collapse;
+L155:         margin-bottom: 25px;
+L156:         font-size: 13px;
+L157:     }
+L158:     .statement-table thead th {
+L159:         background: #1a1a2e;
+L160:         color: #fff;
+L161:         padding: 12px 15px;
+L162:         font-weight: 600;
+L163:         text-align: left;
+L164:         font-size: 12px;
+L165:         text-transform: uppercase;
+L166:         letter-spacing: 0.5px;
+L167:     }
+L168:     .statement-table thead th:nth-child(n+4) {
+L169:         text-align: right;
+L170:     }
+L171:     .statement-table tbody td {
+L172:         padding: 10px 15px;
+L173:         border-bottom: 1px solid #e9ecef;
+L174:         color: #333;
+L175:     }
+L176:     .statement-table tbody td:nth-child(n+4) {
+L177:         text-align: right;
+L178:         font-family: 'Courier New', monospace;
+L179:     }
+L180:     .statement-table tbody tr:nth-child(even) {
+L181:         background: #fafbfc;
+L182:     }
+L183:     .statement-table tbody tr:hover {
+L184:         background: #f0f9ff;
+L185:     }
+L186:     .statement-table tbody tr.opening-balance-row {
+L187:         background: #e8f4f8;
+L188:         font-weight: 600;
+L189:     }
+L190:     .statement-table tbody tr.opening-balance-row td {
+L191:         border-bottom: 2px solid #17A2B8;
+L192:     }
+L193:     .statement-table tbody tr.row-invoice td.ref-col {
+L194:         color: #17A2B8;
+L195:         font-weight: 500;
+L196:     }
+L197:     .statement-table tbody tr.row-payment td.ref-col {
+L198:         color: #28a745;
+L199:         font-weight: 500;
+L200:     }
+L201: 
+L202:     /* Totals rows */
+L203:     .statement-table tfoot td {
+L204:         padding: 12px 15px;
+L205:         font-weight: 700;
+L206:         font-size: 13px;
+L207:     }
+L208:     .statement-table tfoot td:nth-child(n+4) {
+L209:         text-align: right;
+L210:         font-family: 'Courier New', monospace;
+L211:     }
+L212:     .statement-table tfoot tr.totals-row {
+L213:         background: #f0f0f0;
+L214:         border-top: 2px solid #333;
+L215:     }
+L216:     .statement-table tfoot tr.closing-balance-row {
+L217:         background: #0d3d56;
+L218:         color: #fff;
+L219:     }
+L220:     .statement-table tfoot tr.closing-balance-row td {
+L221:         color: #fff;
+L222:         font-size: 14px;
+L223:         padding: 14px 15px;
+L224:     }
+L225: 
+L226:     /* Aging summary */
+L227:     .aging-section {
+L228:         margin-top: 30px;
+L229:     }
+L230:     .aging-section h5 {
+L231:         color: #0d3d56;
+L232:         font-weight: 600;
+L233:         margin-bottom: 15px;
+L234:         font-size: 16px;
+L235:     }
+L236:     .aging-table {
+L237:         width: 100%;
+L238:         border-collapse: collapse;
+L239:         font-size: 13px;
+L240:     }
+L241:     .aging-table thead th {
+L242:         background: #17A2B8;
+L243:         color: #fff;
+L244:         padding: 12px 20px;
+L245:         text-align: center;
+L246:         font-weight: 600;
+L247:         font-size: 12px;
+L248:         text-transform: uppercase;
+L249:         letter-spacing: 0.5px;
+L250:     }
+L251:     .aging-table tbody td {
+L252:         padding: 14px 20px;
+L253:         text-align: center;
+L254:         font-weight: 600;
+L255:         font-size: 15px;
+L256:         border: 1px solid #e9ecef;
+L257:         font-family: 'Courier New', monospace;
+L258:     }
+L259:     .aging-table tbody td.aging-current {
+L260:         background: #d4edda;
+L261:         color: #155724;
+L262:     }
+L263:     .aging-table tbody td.aging-30 {
+L264:         background: #fff3cd;
+L265:         color: #856404;
+L266:     }
+L267:     .aging-table tbody td.aging-60 {
+L268:         background: #fce4d6;
+L269:         color: #c0392b;
+L270:     }
+L271:     .aging-table tbody td.aging-90 {
+L272:         background: #f8d7da;
+L273:         color: #721c24;
+L274:     }
+L275:     .aging-table tbody td.aging-total {
+L276:         background: #0d3d56;
+L277:         color: #fff;
+L278:         font-size: 16px;
+L279:     }
+L280: 
+L281:     /* Type badges */
+L282:     .type-badge {
+L283:         display: inline-block;
+L284:         padding: 3px 10px;
+L285:         border-radius: 12px;
+L286:         font-size: 11px;
+L287:         font-weight: 600;
+L288:         text-transform: uppercase;
+L289:     }
+L290:     .type-invoice {
+L291:         background: #e8f4f8;
+L292:         color: #17A2B8;
+L293:     }
+L294:     .type-payment {
+L295:         background: #d4edda;
+L296:         color: #28a745;
+L297:     }
+L298: 
+L299:     /* Print styles */
+L300:     @media print {
+L301:         .statement-top-bar,
+L302:         .no-print {
+L303:             display: none !important;
+L304:         }
+L305:         .statement-container {
+L306:             box-shadow: none;
+L307:             border: none;
+L308:         }
+L309:         .statement-body {
+L310:             padding: 10px;
+L311:         }
+L312:     }
+L313: </style>
+L314: @endsection
+L315: 
+L316: @section('content')
+L317: <div class="container-fluid">
+L318: 
+L319:     <!-- Flash Messages -->
+L320:     @if(session('success'))
+L321:     <div class="alert alert-success alert-dismissible fade show" role="alert">
+L322:         <i class="mdi mdi-check-circle mr-2"></i> {{ session('success') }}
+L323:         <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+L324:             <span aria-hidden="true">&times;</span>
+L325:         </button>
+L326:     </div>
+L327:     @endif
+L328: 
+L329:     @if(session('error'))
+L330:     <div class="alert alert-danger alert-dismissible fade show" role="alert">
+L331:         <i class="mdi mdi-alert-circle mr-2"></i> {{ session('error') }}
+L332:         <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+L333:             <span aria-hidden="true">&times;</span>
+L334:         </button>
+L335:     </div>
+L336:     @endif
+L337: 
+L338:     <div class="statement-container">
+L339: 
+L340:         <!-- Top Action Bar -->
+L341:         <div class="statement-top-bar">
+L342:             <div>
+L343:                 <a href="{{ route('statements.index') }}" class="btn btn-sm btn-back">
+L344:                     <i class="mdi mdi-arrow-left mr-1"></i> Back
+L345:                 </a>
+L346:                 <h4 class="d-inline-block ml-3">Statement of Account</h4>
+L347:             </div>
+L348:             <div class="btn-group">
+L349:                 <a href="{{ route('statements.pdf', ['client_id' => $client->client_id]) }}?from={{ $from_date }}&to={{ $to_date }}"
+L350:                    class="btn btn-sm btn-pdf" target="_blank">
+L351:                     <i class="mdi mdi-file-pdf mr-1"></i> Download PDF
+L352:                 </a>
+L353:                 <button type="button" class="btn btn-sm btn-email-stmt" id="emailBtn"
+L354:                         data-client-id="{{ $client->client_id }}"
+L355:                         data-from="{{ $from_date }}"
+L356:                         data-to="{{ $to_date }}">
+L357:                     <i class="mdi mdi-email mr-1"></i> Email to Client
+L358:                 </button>
+L359:                 <button type="button" class="btn btn-sm btn-print" onclick="window.print()">
+L360:                     <i class="mdi mdi-printer mr-1"></i> Print
+L361:                 </button>
+L362:             </div>
+L363:         </div>
+L364: 
+L365:         <!-- Statement Body -->
+L366:         <div class="statement-body" id="printableArea">
+L367: 
+L368:             <!-- Company Header -->
+L369:             <div class="company-header">
+L370:                 <div class="company-logo">
+L371:                     <img src="{{ asset('storage/logos/app/cims_inv_logo.png') }}" alt="Company Logo">
+L372:                 </div>
+L373:                 <div class="company-info">
+L374:                     <h4>{{ $settings['settings_company_name'] }}</h4>
+L375:                     <p>
+L376:                         {{ $settings['settings_company_address_line_1'] }}<br>
+L377:                         {{ $settings['settings_company_city'] }}, {{ $settings['settings_company_state'] }}<br>
+L378:                         {{ $settings['settings_company_zipcode'] }}, {{ $settings['settings_company_country'] }}<br>
+L379:                         {{ $settings['settings_company_customfield_1'] }}
+L380:                     </p>
+L381:                 </div>
+L382:             </div>
+L383: 
+L384:             <!-- Statement Title -->
+L385:             <div class="statement-title">
+L386:                 <h2>Statement of Account</h2>
+L387:                 <p class="period">
+L388:                     Period: {{ \Modules\CustomerStatements\Services\StatementService::formatDate($from_date) }}
+L389:                     to {{ \Modules\CustomerStatements\Services\StatementService::formatDate($to_date) }}
+L390:                 </p>
+L391:             </div>
+L392: 
+L393:             <!-- Client Details -->
+L394:             <div class="client-details-box">
+L395:                 <h5>Bill To:</h5>
+L396:                 <table>
+L397:                     <tr>
+L398:                         <td>Company:</td>
+L399:                         <td><strong>{{ $client->client_company_name }}</strong></td>
+L400:                     </tr>
+L401:                     @if($client_code)
+L402:                     <tr>
+L403:                         <td>Client Code:</td>
+L404:                         <td>{{ $client_code }}</td>
+L405:                     </tr>
+L406:                     @endif
+L407:                     @if($client->client_billing_street || $client->client_billing_city)
+L408:                     <tr>
+L409:                         <td>Address:</td>
+L410:                         <td>
+L411:                             {{ $client->client_billing_street }}<br>
+L412:                             @if($client->client_billing_city){{ $client->client_billing_city }}, @endif
+L413:                             @if($client->client_billing_state){{ $client->client_billing_state }}@endif
+L414:                             @if($client->client_billing_zip) {{ $client->client_billing_zip }}@endif
+L415:                             @if($client->client_billing_country)<br>{{ $client->client_billing_country }}@endif
+L416:                         </td>
+L417:                     </tr>
+L418:                     @endif
+L419:                     @if($client->client_vat)
+L420:                     <tr>
+L421:                         <td>VAT Number:</td>
+L422:                         <td>{{ $client->client_vat }}</td>
+L423:                     </tr>
+L424:                     @endif
+L425:                     @if($client->client_phone)
+L426:                     <tr>
+L427:                         <td>Phone:</td>
+L428:                         <td>{{ $client->client_phone }}</td>
+L429:                     </tr>
+L430:                     @endif
+L431:                     @if($client_email)
+L432:                     <tr>
+L433:                         <td>Email:</td>
+L434:                         <td>{{ $client_email }}</td>
+L435:                     </tr>
+L436:                     @endif
+L437:                 </table>
+L438:             </div>
+L439: 
+L440:             @php
+L441:                 $currency = $settings['settings_system_currency_symbol'] ?? 'R ';
+L442:             @endphp
+L443: 
+L444:             <!-- Transaction Table -->
+L445:             <table class="statement-table">
+L446:                 <thead>
+L447:                     <tr>
+L448:                         <th style="width: 100px;">Date</th>
+L449:                         <th style="width: 90px;">Type</th>
+L450:                         <th style="width: 130px;">Reference</th>
+L451:                         <th>Description</th>
+L452:                         <th style="width: 120px;">Debit</th>
+L453:                         <th style="width: 120px;">Credit</th>
+L454:                         <th style="width: 130px;">Balance</th>
+L455:                     </tr>
+L456:                 </thead>
+L457:                 <tbody>
+L458:                     <!-- Opening Balance Row -->
+L459:                     <tr class="opening-balance-row">
+L460:                         <td>{{ \Modules\CustomerStatements\Services\StatementService::formatDate($from_date) }}</td>
+L461:                         <td></td>
+L462:                         <td></td>
+L463:                         <td><strong>Opening Balance</strong></td>
+L464:                         <td></td>
+L465:                         <td></td>
+L466:                         <td><strong>{{ \Modules\CustomerStatements\Services\StatementService::formatCurrency($opening_balance, $currency) }}</strong></td>
+L467:                     </tr>
+L468: 
+L469:                     @forelse($transactions as $txn)
+L470:                     <tr class="row-{{ strtolower($txn['type']) }}">
+L471:                         <td>{{ \Modules\CustomerStatements\Services\StatementService::formatDate($txn['date']) }}</td>
+L472:                         <td>
+L473:                             <span class="type-badge type-{{ strtolower($txn['type']) }}">
+L474:                                 {{ $txn['type'] }}
+L475:                             </span>
+L476:                         </td>
+L477:                         <td class="ref-col">{{ $txn['reference'] }}</td>
+L478:                         <td>{{ $txn['description'] }}</td>
+L479:                         <td>{{ $txn['debit'] > 0 ? \Modules\CustomerStatements\Services\StatementService::formatCurrency($txn['debit'], $currency) : '' }}</td>
+L480:                         <td>{{ $txn['credit'] > 0 ? \Modules\CustomerStatements\Services\StatementService::formatCurrency($txn['credit'], $currency) : '' }}</td>
+L481:                         <td>{{ \Modules\CustomerStatements\Services\StatementService::formatCurrency($txn['balance'], $currency) }}</td>
+L482:                     </tr>
+L483:                     @empty
+L484:                     <tr>
+L485:                         <td colspan="7" class="text-center text-muted py-4">
+L486:                             <i class="mdi mdi-file-document-outline" style="font-size: 32px; display: block; margin-bottom: 10px;"></i>
+L487:                             No transactions found for this period.
+L488:                         </td>
+L489:                     </tr>
+L490:                     @endforelse
+L491:                 </tbody>
+L492:                 <tfoot>
+L493:                     <tr class="totals-row">
+L494:                         <td colspan="4" class="text-right"><strong>Totals:</strong></td>
+L495:                         <td>{{ \Modules\CustomerStatements\Services\StatementService::formatCurrency($total_debits, $currency) }}</td>
+L496:                         <td>{{ \Modules\CustomerStatements\Services\StatementService::formatCurrency($total_credits, $currency) }}</td>
+L497:                         <td></td>
+L498:                     </tr>
+L499:                     <tr class="closing-balance-row">
+L500:                         <td colspan="6" class="text-right">Closing Balance:</td>
+L501:                         <td>{{ \Modules\CustomerStatements\Services\StatementService::formatCurrency($closing_balance, $currency) }}</td>
+L502:                     </tr>
+L503:                 </tfoot>
+L504:             </table>
+L505: 
+L506:             <!-- Aging Summary -->
+L507:             @if(isset($aging))
+L508:             <div class="aging-section">
+L509:                 <h5><i class="mdi mdi-clock-outline mr-2"></i> Aging Summary</h5>
+L510:                 <table class="aging-table">
+L511:                     <thead>
+L512:                         <tr>
+L513:                             <th>Current (0-30 days)</th>
+L514:                             <th>30 Days (31-60 days)</th>
+L515:                             <th>60 Days (61-90 days)</th>
+L516:                             <th>90+ Days (91+ days)</th>
+L517:                             <th>Total Outstanding</th>
+L518:                         </tr>
+L519:                     </thead>
+L520:                     <tbody>
+L521:                         <tr>
+L522:                             <td class="aging-current">{{ \Modules\CustomerStatements\Services\StatementService::formatCurrency($aging['buckets']['current'], $currency) }}</td>
+L523:                             <td class="aging-30">{{ \Modules\CustomerStatements\Services\StatementService::formatCurrency($aging['buckets']['30_days'], $currency) }}</td>
+L524:                             <td class="aging-60">{{ \Modules\CustomerStatements\Services\StatementService::formatCurrency($aging['buckets']['60_days'], $currency) }}</td>
+L525:                             <td class="aging-90">{{ \Modules\CustomerStatements\Services\StatementService::formatCurrency($aging['buckets']['90_plus'], $currency) }}</td>
+L526:                             <td class="aging-total">{{ \Modules\CustomerStatements\Services\StatementService::formatCurrency($aging['total'], $currency) }}</td>
+L527:                         </tr>
+L528:                     </tbody>
+L529:                 </table>
+L530:             </div>
+L531:             @endif
+L532: 
+L533:         </div><!-- /statement-body -->
+L534: 
+L535:     </div><!-- /statement-container -->
+L536: 
+L537: </div>
+L538: 
+L539: <!-- Email Confirmation Modal -->
+L540: <div class="modal fade" id="emailConfirmModal" tabindex="-1" role="dialog" aria-hidden="true">
+L541:     <div class="modal-dialog" role="document">
+L542:         <div class="modal-content">
+L543:             <div class="modal-header" style="background: #17A2B8; color: #fff;">
+L544:                 <h5 class="modal-title" style="color: #fff;">
+L545:                     <i class="mdi mdi-email-outline mr-2"></i> Email Statement
+L546:                 </h5>
+L547:                 <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+L548:                     <span aria-hidden="true">&times;</span>
+L549:                 </button>
+L550:             </div>
+L551:             <form id="emailForm" method="POST" action="">
+L552:                 @csrf
+L553:                 <div class="modal-body">
+L554:                     <p>Send this statement to:</p>
+L555:                     <p><strong id="emailRecipient">{{ $client_email ?? 'No email on file' }}</strong></p>
+L556:                     @if($client_email)
+L557:                     <input type="hidden" name="from_date" value="{{ $from_date }}">
+L558:                     <input type="hidden" name="to_date" value="{{ $to_date }}">
+L559:                     <p class="text-muted small">
+L560:                         The statement PDF will be attached to the email.
+L561:                     </p>
+L562:                     @else
+L563:                     <div class="alert alert-warning">
+L564:                         <i class="mdi mdi-alert mr-1"></i>
+L565:                         No email address found for this client. Please add an email to the client's account owner first.
+L566:                     </div>
+L567:                     @endif
+L568:                 </div>
+L569:                 <div class="modal-footer">
+L570:                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+L571:                     @if($client_email)
+L572:                     <button type="submit" class="btn btn-success" id="sendEmailBtn">
+L573:                         <i class="mdi mdi-send mr-1"></i> Send Email
+L574:                     </button>
+L575:                     @endif
+L576:                 </div>
+L577:             </form>
+L578:         </div>
+L579:     </div>
+L580: </div>
+L581: @endsection
+L582: 
+L583: @section('settings-js')
+L584: <script>
+L585: $(document).ready(function() {
+L586:     // Email button click handler
+L587:     $('#emailBtn').on('click', function() {
+L588:         var clientId = $(this).data('client-id');
+L589:         var fromDate = $(this).data('from');
+L590:         var toDate = $(this).data('to');
+L591: 
+L592:         // Set the form action
+L593:         var actionUrl = '{{ url("statements") }}/' + clientId + '/email';
+L594:         $('#emailForm').attr('action', actionUrl);
+L595: 
+L596:         // Show the modal
+L597:         $('#emailConfirmModal').modal('show');
+L598:     });
+L599: 
+L600:     // Email form submission
+L601:     $('#emailForm').on('submit', function() {
+L602:         $('#sendEmailBtn').prop('disabled', true).html('<i class="mdi mdi-loading mdi-spin mr-1"></i> Sending...');
+L603:     });
+L604: });
+L605: </script>
+L606: @endsection
+L607: 
+
+================================================================================
+FILE: CustomerStatements/Services/StatementService.php
+================================================================================
+Size: 11223 bytes
+L1: <?php
+L2: 
+L3: namespace Modules\CustomerStatements\Services;
+L4: 
+L5: use Illuminate\Support\Facades\DB;
+L6: use Carbon\Carbon;
+L7: 
+L8: class StatementService
+L9: {
+L10:     /**
+L11:      * Invoice statuses to exclude (Draft=1, Cancelled=6)
+L12:      */
+L13:     protected array $excludedStatuses = [1, 6];
+L14: 
+L15:     /**
+L16:      * Get all clients for the dropdown selector.
+L17:      *
+L18:      * @return \Illuminate\Support\Collection
+L19:      */
+L20:     public function getClients()
+L21:     {
+L22:         $fieldId = config('customer_statements.client_code_field_id', 38);
+L23: 
+L24:         return DB::table('clients')
+L25:             ->leftJoin('tblcustomfieldsvalues', function ($join) use ($fieldId) {
+L26:                 $join->on('clients.client_id', '=', 'tblcustomfieldsvalues.relid')
+L27:                     ->where('tblcustomfieldsvalues.fieldid', '=', $fieldId);
+L28:             })
+L29:             ->select('clients.client_id', 'clients.client_company_name', 'tblcustomfieldsvalues.value as client_code')
+L30:             ->orderBy('clients.client_company_name', 'asc')
+L31:             ->get();
+L32:     }
+L33: 
+L34:     /**
+L35:      * Get client details by ID.
+L36:      *
+L37:      * @param int $clientId
+L38:      * @return object|null
+L39:      */
+L40:     public function getClient(int $clientId)
+L41:     {
+L42:         return DB::table('clients')
+L43:             ->where('client_id', $clientId)
+L44:             ->first();
+L45:     }
+L46: 
+L47:     /**
+L48:      * Get the primary contact email for a client.
+L49:      *
+L50:      * @param int $clientId
+L51:      * @return string|null
+L52:      */
+L53:     public function getClientEmail(int $clientId): ?string
+L54:     {
+L55:         $user = DB::table('users')
+L56:             ->where('clientid', $clientId)
+L57:             ->where('account_owner', 'yes')
+L58:             ->first();
+L59: 
+L60:         return $user ? $user->email : null;
+L61:     }
+L62: 
+L63:     /**
+L64:      * Get the primary contact name for a client.
+L65:      *
+L66:      * @param int $clientId
+L67:      * @return string
+L68:      */
+L69:     public function getClientContactName(int $clientId): string
+L70:     {
+L71:         $user = DB::table('users')
+L72:             ->where('clientid', $clientId)
+L73:             ->where('account_owner', 'yes')
+L74:             ->first();
+L75: 
+L76:         if ($user) {
+L77:             return trim($user->first_name . ' ' . $user->last_name);
+L78:         }
+L79: 
+L80:         return '';
+L81:     }
+L82: 
+L83:     /**
+L84:      * Get the Client Code custom field value.
+L85:      *
+L86:      * @param int $clientId
+L87:      * @return string|null
+L88:      */
+L89:     public function getClientCode(int $clientId): ?string
+L90:     {
+L91:         $fieldId = config('customer_statements.client_code_field_id', 38);
+L92: 
+L93:         $record = DB::table('tblcustomfieldsvalues')
+L94:             ->where('relid', $clientId)
+L95:             ->where('fieldid', $fieldId)
+L96:             ->first();
+L97: 
+L98:         return $record ? $record->value : null;
+L99:     }
+L100: 
+L101:     /**
+L102:      * Get company settings from the settings table.
+L103:      *
+L104:      * @return array
+L105:      */
+L106:     public function getCompanySettings(): array
+L107:     {
+L108:         $keys = [
+L109:             'settings_company_name',
+L110:             'settings_company_address_line_1',
+L111:             'settings_company_city',
+L112:             'settings_company_state',
+L113:             'settings_company_zipcode',
+L114:             'settings_company_country',
+L115:             'settings_company_customfield_1',
+L116:             'settings_system_currency_symbol',
+L117:             'settings_system_date_format',
+L118:             'settings_invoices_prefix',
+L119:         ];
+L120: 
+L121:         $settings = [];
+L122:         $row = DB::table('settings')->where('settings_id', 1)->first();
+L123:         if ($row) {
+L124:             foreach ($keys as $key) {
+L125:                 if (isset($row->$key)) {
+L126:                     $settings[$key] = $row->$key;
+L127:                 }
+L128:             }
+L129:         }
+L130: 
+L131:         // Defaults
+L132:         return array_merge([
+L133:             'settings_company_name' => 'Accounting Taxation and Payroll (Pty) Ltd',
+L134:             'settings_company_address_line_1' => '29 Coedmore Road, Bellair',
+L135:             'settings_company_city' => 'Durban',
+L136:             'settings_company_state' => 'Kwa-Zulu Natal',
+L137:             'settings_company_zipcode' => '4094',
+L138:             'settings_company_country' => 'South Africa',
+L139:             'settings_company_customfield_1' => 'VAT No. 406 030 6646',
+L140:             'settings_system_currency_symbol' => 'R ',
+L141:             'settings_system_date_format' => 'd-m-Y',
+L142:             'settings_invoices_prefix' => 'INV-',
+L143:         ], $settings);
+L144:     }
+L145: 
+L146:     /**
+L147:      * Calculate the opening balance for a client before the date range.
+L148:      * Opening balance = sum of invoice amounts - sum of payment amounts before from_date.
+L149:      *
+L150:      * @param int $clientId
+L151:      * @param string $fromDate (Y-m-d format)
+L152:      * @return float
+L153:      */
+L154:     public function calculateOpeningBalance(int $clientId, string $fromDate): float
+L155:     {
+L156:         // Sum of invoices before the from date (debits)
+L157:         $invoiceTotal = DB::table('invoices')
+L158:             ->where('bill_clientid', $clientId)
+L159:             ->whereNotIn('bill_status', $this->excludedStatuses)
+L160:             ->where('bill_date', '<', $fromDate)
+L161:             ->sum('bill_final_amount');
+L162: 
+L163:         // Sum of payments before the from date (credits)
+L164:         $paymentTotal = DB::table('payments')
+L165:             ->where('payment_clientid', $clientId)
+L166:             ->where('payment_date', '<', $fromDate)
+L167:             ->sum('payment_amount');
+L168: 
+L169:         return (float) $invoiceTotal - (float) $paymentTotal;
+L170:     }
+L171: 
+L172:     /**
+L173:      * Get all invoices for a client within the date range.
+L174:      *
+L175:      * @param int $clientId
+L176:      * @param string $fromDate (Y-m-d format)
+L177:      * @param string $toDate (Y-m-d format)
+L178:      * @return \Illuminate\Support\Collection
+L179:      */
+L180:     public function getInvoices(int $clientId, string $fromDate, string $toDate)
+L181:     {
+L182:         return DB::table('invoices')
+L183:             ->where('bill_clientid', $clientId)
+L184:             ->whereNotIn('bill_status', $this->excludedStatuses)
+L185:             ->whereBetween('bill_date', [$fromDate, $toDate])
+L186:             ->orderBy('bill_date', 'asc')
+L187:             ->orderBy('bill_invoiceid', 'asc')
+L188:             ->get();
+L189:     }
+L190: 
+L191:     /**
+L192:      * Get all payments for a client within the date range.
+L193:      *
+L194:      * @param int $clientId
+L195:      * @param string $fromDate (Y-m-d format)
+L196:      * @param string $toDate (Y-m-d format)
+L197:      * @return \Illuminate\Support\Collection
+L198:      */
+L199:     public function getPayments(int $clientId, string $fromDate, string $toDate)
+L200:     {
+L201:         return DB::table('payments')
+L202:             ->where('payment_clientid', $clientId)
+L203:             ->whereBetween('payment_date', [$fromDate, $toDate])
+L204:             ->orderBy('payment_date', 'asc')
+L205:             ->orderBy('payment_id', 'asc')
+L206:             ->get();
+L207:     }
+L208: 
+L209:     /**
+L210:      * Generate the full statement data: combined chronological transactions with running balance.
+L211:      *
+L212:      * @param int $clientId
+L213:      * @param string $fromDate (Y-m-d format)
+L214:      * @param string $toDate (Y-m-d format)
+L215:      * @return array
+L216:      */
+L217:     public function generateStatement(int $clientId, string $fromDate, string $toDate): array
+L218:     {
+L219:         $settings = $this->getCompanySettings();
+L220:         $client = $this->getClient($clientId);
+L221:         $clientCode = $this->getClientCode($clientId);
+L222:         $clientEmail = $this->getClientEmail($clientId);
+L223:         $contactName = $this->getClientContactName($clientId);
+L224: 
+L225:         $openingBalance = $this->calculateOpeningBalance($clientId, $fromDate);
+L226:         $invoices = $this->getInvoices($clientId, $fromDate, $toDate);
+L227:         $payments = $this->getPayments($clientId, $fromDate, $toDate);
+L228: 
+L229:         $prefix = $settings['settings_invoices_prefix'] ?? 'INV-';
+L230: 
+L231:         // Build transactions array
+L232:         $transactions = [];
+L233: 
+L234:         foreach ($invoices as $invoice) {
+L235:             $transactions[] = [
+L236:                 'date' => $invoice->bill_date,
+L237:                 'type' => 'Invoice',
+L238:                 'reference' => $prefix . str_pad($invoice->bill_invoiceid, 6, '0', STR_PAD_LEFT),
+L239:                 'description' => 'Invoice ' . $prefix . str_pad($invoice->bill_invoiceid, 6, '0', STR_PAD_LEFT),
+L240:                 'debit' => (float) $invoice->bill_final_amount,
+L241:                 'credit' => 0.00,
+L242:                 'sort_key' => $invoice->bill_date . '_0_' . str_pad($invoice->bill_invoiceid, 10, '0', STR_PAD_LEFT),
+L243:             ];
+L244:         }
+L245: 
+L246:         foreach ($payments as $payment) {
+L247:             $reference = $payment->payment_transaction_id ?: 'PAY-' . str_pad($payment->payment_id, 6, '0', STR_PAD_LEFT);
+L248:             $description = 'Payment received';
+L249:             if ($payment->payment_gateway) {
+L250:                 $description .= ' via ' . $payment->payment_gateway;
+L251:             }
+L252: 
+L253:             // Try to link to an invoice
+L254:             if ($payment->payment_invoiceid) {
+L255:                 $description .= ' (Invoice ' . $prefix . str_pad($payment->payment_invoiceid, 6, '0', STR_PAD_LEFT) . ')';
+L256:             }
+L257: 
+L258:             $transactions[] = [
+L259:                 'date' => $payment->payment_date,
+L260:                 'type' => 'Payment',
+L261:                 'reference' => $reference,
+L262:                 'description' => $description,
+L263:                 'debit' => 0.00,
+L264:                 'credit' => (float) $payment->payment_amount,
+L265:                 'sort_key' => $payment->payment_date . '_1_' . str_pad($payment->payment_id, 10, '0', STR_PAD_LEFT),
+L266:             ];
+L267:         }
+L268: 
+L269:         // Sort chronologically (invoices before payments on same date)
+L270:         usort($transactions, function ($a, $b) {
+L271:             return strcmp($a['sort_key'], $b['sort_key']);
+L272:         });
+L273: 
+L274:         // Calculate running balance
+L275:         $runningBalance = $openingBalance;
+L276:         foreach ($transactions as &$transaction) {
+L277:             $runningBalance += $transaction['debit'] - $transaction['credit'];
+L278:             $transaction['balance'] = $runningBalance;
+L279:             unset($transaction['sort_key']); // Remove sort key from output
+L280:         }
+L281:         unset($transaction);
+L282: 
+L283:         // Calculate totals
+L284:         $totalDebits = array_sum(array_column($transactions, 'debit'));
+L285:         $totalCredits = array_sum(array_column($transactions, 'credit'));
+L286:         $closingBalance = $openingBalance + $totalDebits - $totalCredits;
+L287: 
+L288:         return [
+L289:             'client' => $client,
+L290:             'client_code' => $clientCode,
+L291:             'client_email' => $clientEmail,
+L292:             'contact_name' => $contactName,
+L293:             'settings' => $settings,
+L294:             'from_date' => $fromDate,
+L295:             'to_date' => $toDate,
+L296:             'opening_balance' => $openingBalance,
+L297:             'transactions' => $transactions,
+L298:             'total_debits' => $totalDebits,
+L299:             'total_credits' => $totalCredits,
+L300:             'closing_balance' => $closingBalance,
+L301:         ];
+L302:     }
+L303: 
+L304:     /**
+L305:      * Format a monetary amount with the currency symbol.
+L306:      *
+L307:      * @param float $amount
+L308:      * @param string $currencySymbol
+L309:      * @return string
+L310:      */
+L311:     public static function formatCurrency(float $amount, string $currencySymbol = 'R '): string
+L312:     {
+L313:         return $currencySymbol . number_format($amount, 2, '.', ' ');
+L314:     }
+L315: 
+L316:     /**
+L317:      * Format a date according to the system date format.
+L318:      *
+L319:      * @param string|null $date
+L320:      * @param string $format
+L321:      * @return string
+L322:      */
+L323:     public static function formatDate(?string $date, string $format = 'd-m-Y'): string
+L324:     {
+L325:         if (empty($date)) {
+L326:             return '';
+L327:         }
+L328: 
+L329:         try {
+L330:             return Carbon::parse($date)->format($format);
+L331:         } catch (\Exception $e) {
+L332:             return $date;
+L333:         }
+L334:     }
+L335: }
+L336: 
+
+================================================================================
+FILE: CustomerStatements/Http/routes.php
+================================================================================
+Size: 1283 bytes
+L1: <?php
+L2: 
+L3: use Illuminate\Support\Facades\Route;
+L4: use Modules\CustomerStatements\Http\Controllers\StatementController;
+L5: 
+L6: /*
+L7: |--------------------------------------------------------------------------
+L8: | Customer Statements Module Routes
+L9: |--------------------------------------------------------------------------
+L10: |
+L11: | Routes for the Customer Statements module. These are wrapped in
+L12: | the 'web' and 'auth' middleware groups to ensure only authenticated
+L13: | users can access them.
+L14: |
+L15: */
+L16: 
+L17: Route::middleware(['web', 'auth'])
+L18:     ->prefix('statements')
+L19:     ->group(function () {
+L20: 
+L21:         // Main page with client selector and date range
+L22:         Route::get('/', [StatementController::class, 'index'])
+L23:             ->name('statements.index');
+L24: 
+L25:         // Generate statement (form submission)
+L26:         Route::post('/generate', [StatementController::class, 'generate'])
+L27:             ->name('statements.generate');
+L28: 
+L29:         // Download PDF
+L30:         Route::get('/{client_id}/pdf', [StatementController::class, 'pdf'])
+L31:             ->name('statements.pdf')
+L32:             ->where('client_id', '[0-9]+');
+L33: 
+L34:         // Email statement to client
+L35:         Route::post('/{client_id}/email', [StatementController::class, 'email'])
+L36:             ->name('statements.email')
+L37:             ->where('client_id', '[0-9]+');
+L38:     });
+L39: 
+
+================================================================================
+FILE: SARSRepresentative/Http/Controllers/SarsRepController.php
+================================================================================
+Size: 41670 bytes
+[LARGE FILE - showing statement/pdf related sections only]
+
+L1: <?php
+L2: 
+L3: namespace Modules\SARSRepresentative\Http\Controllers;
+L4: 
+L5: use Carbon\Carbon;
+L6: use Exception;
+L7: use Illuminate\Http\JsonResponse;
+L8: use Illuminate\Http\RedirectResponse;
+L9: use Illuminate\Http\Request;
+L10: use Illuminate\Routing\Controller;
+L11: use Illuminate\Support\Facades\Auth;
+L12: use Illuminate\Support\Facades\DB;
+L13: use Illuminate\Support\Facades\Log;
+L14: use Illuminate\Support\Facades\Storage;
+L15: use Illuminate\Support\Facades\View;
+L16: use Illuminate\Support\Str;
+L17: use Modules\SARSRepresentative\Models\SarsRepAuditLog;
+L18: use Modules\SARSRepresentative\Models\SarsRepDocument;
+L19: use Modules\SARSRepresentative\Models\SarsRepRequest;
+L20: use Modules\SARSRepresentative\Models\SarsRepresentative;
+L21: use Symfony\Component\HttpFoundation\BinaryFileResponse;
+L23: class SarsRepController extends Controller
+...
+
+
+================================================================================
+FILE: SARSRepresentative/Routes/web.php
+================================================================================
+Size: 1456 bytes
+L1: <?php
+L2: 
+L3: use Illuminate\Support\Facades\Route;
+L4: 
+L5: // Main listing
+L6: Route::get('/', 'SarsRepController@index')->name('index');
+L7: 
+L8: // Create wizard - Step 1: Entity & Representative details
+L9: Route::get('/create', 'SarsRepController@create')->name('create');
+L10: Route::post('/', 'SarsRepController@store')->name('store');
+L11: 
+L12: // Show request details
+L13: Route::get('/{id}', 'SarsRepController@show')->name('show');
+L14: 
+L15: // Edit request
+L16: Route::get('/{id}/edit', 'SarsRepController@edit')->name('edit');
+L17: Route::put('/{id}', 'SarsRepController@update')->name('update');
+L18: 
+L19: // Delete request
+L20: Route::delete('/{id}', 'SarsRepController@destroy')->name('destroy');
+L21: 
+L22: // Document upload (AJAX)
+L23: Route::post('/{id}/upload', 'SarsRepController@uploadDocument')->name('upload');
+L24: 
+L25: // Delete document (AJAX)
+L26: Route::delete('/{id}/document/{docId}', 'SarsRepController@deleteDocument')->name('deleteDocument');
+L27: 
+L28: // Generate documents (Mandate, Resolution, Cover Letter)
+L29: Route::post('/{id}/generate/{type}', 'SarsRepController@generateDocument')->name('generate');
+L30: 
+L31: // Generate final PDF bundle
+L32: Route::post('/{id}/generate-bundle', 'SarsRepController@generateBundle')->name('generateBundle');
+L33: 
+L34: // Download document
+L35: Route::get('/{id}/download/{docId}', 'SarsRepController@downloadDocument')->name('download');
+L36: 
+L37: // Update status (AJAX)
+L38: Route::put('/{id}/status', 'SarsRepController@updateStatus')->name('updateStatus');
+L39: 
+L40: // Audit log
+L41: Route::get('/{id}/audit', 'SarsRepController@audit')->name('audit');
+L42: 
+
+
+=== DEEP-DIVE COMPLETE ===
+Script self-deleted.

@@ -1,0 +1,182 @@
+/* ===============================
+   CIMS DESIGN TOKENS
+=============================== */
+:root {
+    --cims-blue-primary: #004b87;
+    --cims-blue-secondary: #006aa7;
+    --cims-grey-light: #f4f6f9;
+    --cims-grey-dark: #2f2f2f;
+}
+
+/* ===============================
+   SECTION CARDS
+=============================== */
+.section-card {
+    background: #fff;
+    border-radius: 6px;
+    padding: 30px;
+    box-shadow: 0 4px 12px rgba(0,75,135,0.18);
+    margin-bottom: 20px;
+}
+
+.section-card:hover {
+    box-shadow: 0 8px 20px rgba(0,75,135,0.28);
+    transform: translateY(-2px);
+    transition: all 0.2s ease;
+}
+
+/* ===============================
+   COMPANY DIVIDER
+=============================== */
+.company-divider {
+    border: none;
+    height: 3px;
+    background-color: var(--cims-blue-secondary);
+    margin: 12px 0 24px 0;
+    border-radius: 2px;
+}
+
+/* ===============================
+   WIZARD TABS
+=============================== */
+.wizard-tabs {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+}
+
+.wizard-tab {
+    padding: 10px 14px;
+    background: #b9d6ee;
+    border-radius: 4px;
+    font-weight: 600;
+    cursor: pointer;
+    border-left: 4px solid transparent;
+}
+
+.wizard-tab.active {
+    border-left-color: var(--cims-blue-secondary);
+    background: #1f8dee;
+    color: #fff;
+}
+
+.wizard-tab:hover:not(.active) {
+    background: #e6f0f8;
+}
+
+/* ===============================
+   PLACEHOLDER / UNDER CONSTRUCTION
+=============================== */
+.placeholder-wrap {
+    display: flex;
+    align-items: center;
+    gap: 40px;
+}
+
+.placeholder-text {
+    max-width: 420px;
+}
+
+.placeholder-text h2 {
+    font-weight: 800;
+    margin-bottom: 16px;
+}
+
+.placeholder-text p {
+    font-size: 18px;
+    line-height: 1.6;
+}
+
+.placeholder-image img {
+    max-width: 360px;
+    opacity: 0.95;
+}
+
+/* ===============================
+   WIZARD FOOTER
+=============================== */
+.wizard-footer {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 20px;
+}
+
+.wizard-footer-divider {
+    border: none;
+    height: 2px;
+    background-color: var(--cims-blue-secondary);
+    margin: 18px 0 12px 0;
+    border-radius: 2px;
+}
+
+.wizard-footer-note {
+    text-align: center;
+    font-size: 13px;
+    color: #5a6b7a;
+}
+
+/* ===============================
+   POPIA CHECKBOX
+=============================== */
+.popia-checkbox {
+    cursor: pointer;
+}
+
+.popia-check {
+    width: 22px;
+    height: 22px;
+    border: 2px solid var(--cims-blue-secondary);
+    cursor: pointer;
+}
+
+.popia-check:focus {
+    box-shadow: 0 0 0 0.2rem rgba(0,106,167,0.35);
+}
+
+.popia-check:checked {
+    background-color: var(--cims-blue-secondary);
+    border-color: var(--cims-blue-secondary);
+}
+
+/* ===============================
+   COMPLIANCE BADGE
+=============================== */
+.compliance-badge {
+    animation: softPulse 3.5s ease-in-out infinite;
+}
+
+.compliance-version {
+    font-size: 0.7rem;
+    opacity: 0.75;
+    margin-top: 2px;
+    letter-spacing: 0.5px;
+}
+
+@keyframes softPulse {
+    0%   { transform: scale(1);   opacity: 1; }
+    50%  { transform: scale(1.04); opacity: 0.9; }
+    100% { transform: scale(1);   opacity: 1; }
+}
+
+/* ===============================
+   RESPONSIVE ADJUSTMENTS
+=============================== */
+@media (max-width: 768px) {
+    .placeholder-wrap {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .placeholder-text {
+        max-width: 100%;
+    }
+
+    .placeholder-image img {
+        max-width: 280px;
+    }
+
+    .wizard-tabs {
+        justify-content: center;
+    }
+}

@@ -1,0 +1,11 @@
+{
+    "name": "CIMSAppointments",
+    "alias": "cims_appointments",
+    "description": "CIMS Appointments Module - Staff scheduling, services, availability, booking, email notifications & invoicing",
+    "keywords": ["appointments", "booking", "scheduling", "services", "staff", "availability"],
+    "priority": 0,
+    "providers": [
+        "Modules\\CIMSAppointments\\Providers\\CIMSAppointmentsServiceProvider"
+    ],
+    "files": []
+}

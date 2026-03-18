@@ -1,0 +1,12 @@
+{
+    "name": "CIMS_PAYROLL",
+    "alias": "cims_payroll",
+    "description": "CIMS Payroll Management System - South African BCEA Compliant",
+    "keywords": ["payroll", "cims", "employees", "payslips", "BCEA", "SARS"],
+    "priority": 0,
+    "providers": [
+        "Modules\\CIMS_PAYROLL\\Providers\\CIMSPAYROLLServiceProvider"
+    ],
+    "files": [],
+    "requires": []
+}

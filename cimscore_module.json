@@ -1,0 +1,11 @@
+{
+    "name": "CIMSCore",
+    "alias": "cimscore",
+    "description": "Core module for CIMS - contains shared menu, layouts and components",
+    "keywords": ["cims", "core", "menu", "shared"],
+    "priority": 0,
+    "providers": [
+        "Modules\\CIMSCore\\Providers\\CIMSCoreServiceProvider"
+    ],
+    "files": []
+}

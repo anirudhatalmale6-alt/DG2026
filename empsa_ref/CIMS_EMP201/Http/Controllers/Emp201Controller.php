@@ -1,0 +1,1677 @@
+<?php
+
+namespace Modules\CIMS_EMP201\Http\Controllers;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
+use Modules\CIMS_EMP201\Models\Emp201Declaration;
+use Modules\CIMS_EMP201\Models\SarsStatus;
+use Modules\cims_pm_pro\Models\Document;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Auth;
+use Barryvdh\DomPDF\Facade\Pdf;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
+
+class Emp201Controller extends Controller
+{
+    public function index(Request $request)
+    {
+        $query = Emp201Declaration::query();
+
+        // Status filter
+        $status = $request->get('status');
+        if ($status === 'active') {
+            $query->where('status', 1);
+        } elseif ($status === 'inactive') {
+            $query->where('status', 0);
+        } elseif ($status === 'deleted') {
+            $query->onlyTrashed();
+        }
+
+        // Client filter
+        if ($request->filled('client_id')) {
+            $query->where('client_id', $request->get('client_id'));
+        }
+
+        // Financial year filter
+        if ($request->filled('financial_year')) {
+            $query->where('financial_year', $request->get('financial_year'));
+        }
+
+        // Search
+        if ($request->filled('search')) {
+            $search = $request->get('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('company_name', 'like', "%{$search}%")
+                  ->orWhere('client_code', 'like', "%{$search}%")
+                  ->orWhere('payment_reference', 'like', "%{$search}%")
+                  ->orWhere('paye_number', 'like', "%{$search}%");
+            });
+        }
+
+        $declarations = $query->orderBy('id', 'desc')->paginate(20);
+
+        // Stats
+        $stats = [
+            'total' => Emp201Declaration::count(),
+            'active' => Emp201Declaration::where('status', 1)->count(),
+            'inactive' => Emp201Declaration::where('status', 0)->count(),
+            'this_year' => Emp201Declaration::where('financial_year', date('Y'))->count(),
+        ];
+
+        // Get unique clients for filter dropdown
+        $clients = DB::table('client_master')
+            ->select('client_id', 'company_name', 'client_code')
+            ->where('is_active', 1)
+            ->orderBy('company_name')
+            ->get();
+
+        // Get unique financial years for filter
+        $financialYears = Emp201Declaration::select('financial_year')
+            ->distinct()
+            ->orderBy('financial_year', 'desc')
+            ->pluck('financial_year');
+
+        return view('cims_emp201::emp201.index', compact(
+            'declarations', 'stats', 'clients', 'financialYears'
+        ));
+    }
+
+    public function create()
+    {
+        $clients = DB::table('client_master')
+            ->where('is_active', 1)
+            ->orderBy('company_name')
+            ->get();
+
+        $taxYears = DB::table('cims_document_periods')
+            ->where('is_active', 1)
+            ->whereNotNull('tax_year')
+            ->select('tax_year')
+            ->distinct()
+            ->orderBy('tax_year', 'desc')
+            ->pluck('tax_year');
+
+        $users = DB::table('users')
+            ->where('status', 'active')
+            ->where('type', 'team')
+            ->orderBy('first_name')
+            ->get(['id', 'first_name', 'last_name']);
+
+        $sarsStatuses = SarsStatus::getByFormType('emp201');
+
+        return view('cims_emp201::emp201.form', [
+            'clients' => $clients,
+            'taxYears' => $taxYears,
+            'users' => $users,
+            'sarsStatuses' => $sarsStatuses,
+            'declaration' => null,
+        ]);
+    }
+
+    public function store(Request $request)
+    {
+        $data = $this->getFormData($request);
+        $declaration = Emp201Declaration::create($data);
+
+        // Handle document uploads
+        $this->handleDocumentUploads($request, $declaration);
+
+        return redirect()->route('cimsemp201.index')
+            ->with('success', 'EMP201 declaration created successfully.');
+    }
+
+    public function show($id)
+    {
+        $declaration = Emp201Declaration::findOrFail($id);
+        return view('cims_emp201::emp201.show', compact('declaration'));
+    }
+
+    public function edit($id)
+    {
+        $declaration = Emp201Declaration::findOrFail($id);
+
+        $clients = DB::table('client_master')
+            ->where('is_active', 1)
+            ->orderBy('company_name')
+            ->get();
+
+        $taxYears = DB::table('cims_document_periods')
+            ->where('is_active', 1)
+            ->whereNotNull('tax_year')
+            ->select('tax_year')
+            ->distinct()
+            ->orderBy('tax_year', 'desc')
+            ->pluck('tax_year');
+
+        // Get periods for the declaration's tax year (for pre-selecting)
+        $periods = collect();
+        if ($declaration->financial_year) {
+            $periods = DB::table('cims_document_periods')
+                ->where('is_active', 1)
+                ->where('tax_year', $declaration->financial_year)
+                ->whereRaw("period_name NOT LIKE '%Tax Year%'")
+                ->orderBy('display_order', 'asc')
+                ->get();
+        }
+
+        $users = DB::table('users')
+            ->where('status', 'active')
+            ->where('type', 'team')
+            ->orderBy('first_name')
+            ->get(['id', 'first_name', 'last_name']);
+
+        $sarsStatuses = SarsStatus::getByFormType('emp201');
+
+        return view('cims_emp201::emp201.form', [
+            'clients' => $clients,
+            'taxYears' => $taxYears,
+            'periods' => $periods,
+            'users' => $users,
+            'sarsStatuses' => $sarsStatuses,
+            'declaration' => $declaration,
+        ]);
+    }
+
+    public function update(Request $request, $id)
+    {
+        $declaration = Emp201Declaration::findOrFail($id);
+        $data = $this->getFormData($request);
+        $declaration->update($data);
+
+        // Handle document uploads
+        $this->handleDocumentUploads($request, $declaration);
+
+        return redirect()->route('cimsemp201.index')
+            ->with('success', 'EMP201 declaration updated successfully.');
+    }
+
+    public function updateStatus(Request $request, $id)
+    {
+        $declaration = Emp201Declaration::findOrFail($id);
+        $declaration->update(['status' => $request->get('status')]);
+
+        return response()->json(['success' => true, 'message' => 'Status updated.']);
+    }
+
+    public function destroy($id)
+    {
+        $declaration = Emp201Declaration::findOrFail($id);
+        $declaration->delete();
+
+        return response()->json(['success' => true, 'message' => 'EMP201 deleted.']);
+    }
+
+    public function pivot(Request $request)
+    {
+        $clients = DB::table('client_master')
+            ->where('is_active', 1)
+            ->orderBy('company_name')
+            ->get(['client_id', 'client_code', 'company_name']);
+
+        $taxYears = DB::table('cims_document_periods')
+            ->where('is_active', 1)
+            ->whereNotNull('tax_year')
+            ->select('tax_year')
+            ->distinct()
+            ->orderBy('tax_year', 'desc')
+            ->pluck('tax_year');
+
+        return view('cims_emp201::emp201.pivot', compact('clients', 'taxYears'));
+    }
+
+    public function apiPivotData(Request $request)
+    {
+        $clientId = $request->get('client_id');
+        $taxYear = $request->get('tax_year');
+
+        if (!$clientId || !$taxYear) {
+            return response()->json(['error' => 'Client and tax year required'], 400);
+        }
+
+        // SA payroll tax year: March to February
+        // Period combo format: YYYYPP where YYYY=tax_year, PP=period number (01=March, 12=February)
+        // e.g. tax_year=2026: 202601=March 2025, 202602=April 2025, ... 202612=February 2026
+        $prevYear = $taxYear - 1;
+        $months = [
+            ['month' => 3,  'label' => 'March',     'combo' => sprintf('%04d%02d', $taxYear, 1),  'year' => $prevYear],
+            ['month' => 4,  'label' => 'April',     'combo' => sprintf('%04d%02d', $taxYear, 2),  'year' => $prevYear],
+            ['month' => 5,  'label' => 'May',       'combo' => sprintf('%04d%02d', $taxYear, 3),  'year' => $prevYear],
+            ['month' => 6,  'label' => 'June',      'combo' => sprintf('%04d%02d', $taxYear, 4),  'year' => $prevYear],
+            ['month' => 7,  'label' => 'July',      'combo' => sprintf('%04d%02d', $taxYear, 5),  'year' => $prevYear],
+            ['month' => 8,  'label' => 'August',    'combo' => sprintf('%04d%02d', $taxYear, 6),  'year' => $prevYear],
+            ['month' => 9,  'label' => 'September', 'combo' => sprintf('%04d%02d', $taxYear, 7),  'year' => $prevYear],
+            ['month' => 10, 'label' => 'October',   'combo' => sprintf('%04d%02d', $taxYear, 8),  'year' => $prevYear],
+            ['month' => 11, 'label' => 'November',  'combo' => sprintf('%04d%02d', $taxYear, 9),  'year' => $prevYear],
+            ['month' => 12, 'label' => 'December',  'combo' => sprintf('%04d%02d', $taxYear, 10), 'year' => $prevYear],
+            ['month' => 1,  'label' => 'January',   'combo' => sprintf('%04d%02d', $taxYear, 11), 'year' => (int)$taxYear],
+            ['month' => 2,  'label' => 'February',  'combo' => sprintf('%04d%02d', $taxYear, 12), 'year' => (int)$taxYear],
+        ];
+
+        // Get all declarations for this client and tax year
+        $declarations = Emp201Declaration::where('client_id', $clientId)
+            ->where('financial_year', $taxYear)
+            ->get()
+            ->keyBy('period_combo');
+
+        // Financial line items to display
+        $lineItems = [
+            ['key' => 'paye_liability',    'label' => 'PAYE Liability'],
+            ['key' => 'sdl_liability',     'label' => 'SDL Liability'],
+            ['key' => 'uif_liability',     'label' => 'UIF Liability'],
+            ['key' => 'payroll_liability', 'label' => 'Payroll Liability'],
+            ['key' => 'eti_brought_forward', 'label' => 'ETI Brought Forward'],
+            ['key' => 'eti_calculated',    'label' => 'ETI Calculated'],
+            ['key' => 'eti_utilised',      'label' => 'ETI Utilised'],
+            ['key' => 'eti_carry_forward', 'label' => 'ETI Carry Forward'],
+            ['key' => 'paye_payable',      'label' => 'PAYE Payable'],
+            ['key' => 'sdl_payable',       'label' => 'SDL Payable'],
+            ['key' => 'uif_payable',       'label' => 'UIF Payable'],
+            ['key' => 'penalty_interest',  'label' => 'Penalty & Interest'],
+            ['key' => 'tax_payable',       'label' => 'Total Payable'],
+        ];
+
+        // Build pivot data
+        $pivotData = [];
+        foreach ($lineItems as $item) {
+            $row = [
+                'label' => $item['label'],
+                'key'   => $item['key'],
+                'values' => [],
+                'p1_total' => 0,
+                'p2_total' => 0,
+                'annual_total' => 0,
+            ];
+
+            foreach ($months as $i => $m) {
+                $decl = $declarations->get($m['combo']);
+                $val = $decl ? (float)($decl->{$item['key']} ?? 0) : 0;
+                $row['values'][] = $val;
+
+                if ($i < 6) {
+                    $row['p1_total'] += $val;
+                } else {
+                    $row['p2_total'] += $val;
+                }
+            }
+            $row['annual_total'] = $row['p1_total'] + $row['p2_total'];
+            $pivotData[] = $row;
+        }
+
+        // Also get declaration IDs for linking (click to edit)
+        $declIds = [];
+        foreach ($months as $m) {
+            $decl = $declarations->get($m['combo']);
+            $declIds[] = $decl ? $decl->id : null;
+        }
+
+        return response()->json([
+            'months' => $months,
+            'lineItems' => $pivotData,
+            'declarationIds' => $declIds,
+        ]);
+    }
+
+    public function exportPivotExcel(Request $request)
+    {
+        $clientId = $request->get('client_id');
+        $taxYear = $request->get('tax_year');
+
+        if (!$clientId || !$taxYear) {
+            return redirect()->back()->with('error', 'Client and tax year required.');
+        }
+
+        // Get client info
+        $client = DB::table('client_master')->where('client_id', $clientId)->first();
+        $clientName = $client ? $client->company_name : 'Unknown';
+        $clientCode = $client ? $client->client_code : '';
+
+        // Build months (same logic as apiPivotData)
+        $prevYear = $taxYear - 1;
+        $months = [
+            ['month' => 3,  'label' => 'Mar ' . $prevYear, 'combo' => sprintf('%04d%02d', $taxYear, 1)],
+            ['month' => 4,  'label' => 'Apr ' . $prevYear,  'combo' => sprintf('%04d%02d', $taxYear, 2)],
+            ['month' => 5,  'label' => 'May ' . $prevYear,  'combo' => sprintf('%04d%02d', $taxYear, 3)],
+            ['month' => 6,  'label' => 'Jun ' . $prevYear,  'combo' => sprintf('%04d%02d', $taxYear, 4)],
+            ['month' => 7,  'label' => 'Jul ' . $prevYear,  'combo' => sprintf('%04d%02d', $taxYear, 5)],
+            ['month' => 8,  'label' => 'Aug ' . $prevYear,  'combo' => sprintf('%04d%02d', $taxYear, 6)],
+            ['month' => 9,  'label' => 'Sep ' . $prevYear,  'combo' => sprintf('%04d%02d', $taxYear, 7)],
+            ['month' => 10, 'label' => 'Oct ' . $prevYear,  'combo' => sprintf('%04d%02d', $taxYear, 8)],
+            ['month' => 11, 'label' => 'Nov ' . $prevYear,  'combo' => sprintf('%04d%02d', $taxYear, 9)],
+            ['month' => 12, 'label' => 'Dec ' . $prevYear,  'combo' => sprintf('%04d%02d', $taxYear, 10)],
+            ['month' => 1,  'label' => 'Jan ' . $taxYear,   'combo' => sprintf('%04d%02d', $taxYear, 11)],
+            ['month' => 2,  'label' => 'Feb ' . $taxYear,   'combo' => sprintf('%04d%02d', $taxYear, 12)],
+        ];
+
+        $declarations = Emp201Declaration::where('client_id', $clientId)
+            ->where('financial_year', $taxYear)
+            ->get()
+            ->keyBy('period_combo');
+
+        $lineItems = [
+            ['key' => 'paye_liability',      'label' => 'PAYE Liability',      'type' => 'normal'],
+            ['key' => 'sdl_liability',       'label' => 'SDL Liability',       'type' => 'normal'],
+            ['key' => 'uif_liability',       'label' => 'UIF Liability',       'type' => 'normal'],
+            ['key' => 'payroll_liability',   'label' => 'Payroll Liability',   'type' => 'subtotal'],
+            ['key' => 'eti_brought_forward', 'label' => 'ETI Brought Forward', 'type' => 'section'],
+            ['key' => 'eti_calculated',      'label' => 'ETI Calculated',      'type' => 'normal'],
+            ['key' => 'eti_utilised',        'label' => 'ETI Utilised',        'type' => 'normal'],
+            ['key' => 'eti_carry_forward',   'label' => 'ETI Carry Forward',   'type' => 'normal'],
+            ['key' => 'paye_payable',        'label' => 'PAYE Payable',        'type' => 'section'],
+            ['key' => 'sdl_payable',         'label' => 'SDL Payable',         'type' => 'normal'],
+            ['key' => 'uif_payable',         'label' => 'UIF Payable',         'type' => 'normal'],
+            ['key' => 'penalty_interest',    'label' => 'Penalty & Interest',  'type' => 'section'],
+            ['key' => 'tax_payable',         'label' => 'TOTAL PAYABLE',       'type' => 'total'],
+        ];
+
+        // Create spreadsheet
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('EMP201 Pivot');
+
+        // Colors
+        $darkHeader  = '0D3D56';
+        $teal        = '17A2B8';
+        $p1Blue      = '1565C0';
+        $annualGreen = '2E7D32';
+        $lightBlue   = 'E8F0FE';
+        $lightGreen  = 'E6F4EA';
+        $subtotalBg  = 'EDF5F7';
+        $totalBg     = 'FFF8E1';
+        $labelBg     = 'F4F8FA';
+        $white       = 'FFFFFF';
+
+        // ============================================
+        // ROW 1: Title
+        // ============================================
+        $sheet->mergeCells('A1:P1');
+        $sheet->setCellValue('A1', 'EMP201 / EMP501 Pivot Summary');
+        $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(16)->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color($darkHeader));
+        $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
+        $sheet->getRowDimension(1)->setRowHeight(28);
+
+        // ROW 2: Client & Year
+        $sheet->mergeCells('A2:P2');
+        $sheet->setCellValue('A2', $clientCode . ' - ' . $clientName . '  |  Tax Year ' . $taxYear . ' (Mar ' . $prevYear . ' - Feb ' . $taxYear . ')');
+        $sheet->getStyle('A2')->getFont()->setBold(true)->setSize(11)->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('666666'));
+        $sheet->getRowDimension(2)->setRowHeight(20);
+
+        // ROW 3: Blank spacer
+        $sheet->getRowDimension(3)->setRowHeight(8);
+
+        // ============================================
+        // ROW 4: Column Headers
+        // ============================================
+        $headerRow = 4;
+        $col = 1; // A
+
+        // Column A: Line Item
+        $sheet->setCellValueByColumnAndRow($col, $headerRow, 'Line Item');
+        $col++;
+
+        // Months 1-6 (P1): cols B-G
+        for ($i = 0; $i < 6; $i++) {
+            $sheet->setCellValueByColumnAndRow($col, $headerRow, $months[$i]['label']);
+            $col++;
+        }
+
+        // EMP501 Period 1 total: col H
+        $sheet->setCellValueByColumnAndRow($col, $headerRow, 'EMP501 Period 1');
+        $p1Col = $col;
+        $col++;
+
+        // Months 7-12 (P2): cols I-N
+        for ($i = 6; $i < 12; $i++) {
+            $sheet->setCellValueByColumnAndRow($col, $headerRow, $months[$i]['label']);
+            $col++;
+        }
+
+        // EMP501 Period 2 total: col O
+        $sheet->setCellValueByColumnAndRow($col, $headerRow, 'EMP501 Period 2');
+        $p2Col = $col;
+        $col++;
+
+        // Annual EMP501: col P
+        $sheet->setCellValueByColumnAndRow($col, $headerRow, 'Annual EMP501');
+        $annualCol = $col;
+        $lastCol = $col;
+
+        // Style header row
+        $headerRange = 'A' . $headerRow . ':' . $this->colLetter($lastCol) . $headerRow;
+        $sheet->getStyle($headerRange)->applyFromArray([
+            'font' => ['bold' => true, 'size' => 10, 'color' => ['argb' => $white]],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => $darkHeader]],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => true],
+            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => '0A3048']]],
+        ]);
+        // P1 header
+        $sheet->getStyle($this->colLetter($p1Col) . $headerRow)->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB($p1Blue);
+        // P2 header
+        $sheet->getStyle($this->colLetter($p2Col) . $headerRow)->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB($p1Blue);
+        // Annual header
+        $sheet->getStyle($this->colLetter($annualCol) . $headerRow)->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB($annualGreen);
+
+        $sheet->getRowDimension($headerRow)->setRowHeight(32);
+        // Line Item header left-aligned
+        $sheet->getStyle('A' . $headerRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
+
+        // ============================================
+        // DATA ROWS
+        // ============================================
+        $dataRow = $headerRow + 1;
+
+        foreach ($lineItems as $item) {
+            $col = 1;
+            $sheet->setCellValueByColumnAndRow($col, $dataRow, $item['label']);
+            $col++;
+
+            $p1Total = 0;
+            $p2Total = 0;
+
+            // P1 months
+            for ($i = 0; $i < 6; $i++) {
+                $decl = $declarations->get($months[$i]['combo']);
+                $val = $decl ? (float)($decl->{$item['key']} ?? 0) : 0;
+                $sheet->setCellValueByColumnAndRow($col, $dataRow, $val);
+                $p1Total += $val;
+                $col++;
+            }
+
+            // P1 Total
+            $sheet->setCellValueByColumnAndRow($col, $dataRow, $p1Total);
+            $col++;
+
+            // P2 months
+            for ($i = 6; $i < 12; $i++) {
+                $decl = $declarations->get($months[$i]['combo']);
+                $val = $decl ? (float)($decl->{$item['key']} ?? 0) : 0;
+                $sheet->setCellValueByColumnAndRow($col, $dataRow, $val);
+                $p2Total += $val;
+                $col++;
+            }
+
+            // P2 Total
+            $sheet->setCellValueByColumnAndRow($col, $dataRow, $p2Total);
+            $col++;
+
+            // Annual Total
+            $sheet->setCellValueByColumnAndRow($col, $dataRow, $p1Total + $p2Total);
+
+            // Style: number format for all data cells
+            $dataRange = 'B' . $dataRow . ':' . $this->colLetter($lastCol) . $dataRow;
+            $sheet->getStyle($dataRange)->getNumberFormat()->setFormatCode('#,##0.00');
+            $sheet->getStyle($dataRange)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+
+            // Row label styling
+            $sheet->getStyle('A' . $dataRow)->applyFromArray([
+                'font' => ['bold' => true, 'size' => 10, 'color' => ['argb' => $darkHeader]],
+                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => $labelBg]],
+                'borders' => ['right' => ['borderStyle' => Border::BORDER_MEDIUM, 'color' => ['argb' => $teal]]],
+            ]);
+
+            // P1 total column styling
+            $sheet->getStyle($this->colLetter($p1Col) . $dataRow)->applyFromArray([
+                'font' => ['bold' => true, 'color' => ['argb' => $darkHeader]],
+                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => $lightBlue]],
+                'borders' => [
+                    'left' => ['borderStyle' => Border::BORDER_MEDIUM, 'color' => ['argb' => $p1Blue]],
+                    'right' => ['borderStyle' => Border::BORDER_MEDIUM, 'color' => ['argb' => $p1Blue]],
+                ],
+            ]);
+
+            // P2 total column styling
+            $sheet->getStyle($this->colLetter($p2Col) . $dataRow)->applyFromArray([
+                'font' => ['bold' => true, 'color' => ['argb' => $darkHeader]],
+                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => $lightBlue]],
+                'borders' => [
+                    'left' => ['borderStyle' => Border::BORDER_MEDIUM, 'color' => ['argb' => $p1Blue]],
+                    'right' => ['borderStyle' => Border::BORDER_MEDIUM, 'color' => ['argb' => $p1Blue]],
+                ],
+            ]);
+
+            // Annual total column styling
+            $sheet->getStyle($this->colLetter($annualCol) . $dataRow)->applyFromArray([
+                'font' => ['bold' => true, 'color' => ['argb' => '1B5E20']],
+                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => $lightGreen]],
+                'borders' => [
+                    'left' => ['borderStyle' => Border::BORDER_MEDIUM, 'color' => ['argb' => $annualGreen]],
+                    'right' => ['borderStyle' => Border::BORDER_MEDIUM, 'color' => ['argb' => $annualGreen]],
+                ],
+            ]);
+
+            // Row-type specific styling
+            $fullRange = 'A' . $dataRow . ':' . $this->colLetter($lastCol) . $dataRow;
+
+            if ($item['type'] === 'subtotal') {
+                // Payroll Liability row - dark borders top & bottom, light blue-grey bg
+                $sheet->getStyle($fullRange)->applyFromArray([
+                    'font' => ['bold' => true, 'size' => 10],
+                    'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => $subtotalBg]],
+                    'borders' => [
+                        'top' => ['borderStyle' => Border::BORDER_MEDIUM, 'color' => ['argb' => $darkHeader]],
+                        'bottom' => ['borderStyle' => Border::BORDER_MEDIUM, 'color' => ['argb' => $darkHeader]],
+                    ],
+                ]);
+                $sheet->getStyle('A' . $dataRow)->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('DCEEF2');
+            } elseif ($item['type'] === 'section') {
+                // Section start - teal top border
+                $sheet->getStyle($fullRange)->applyFromArray([
+                    'borders' => ['top' => ['borderStyle' => Border::BORDER_MEDIUM, 'color' => ['argb' => $teal]]],
+                ]);
+            } elseif ($item['type'] === 'total') {
+                // Total Payable - thick borders, warm yellow bg, larger bold font
+                $sheet->getStyle($fullRange)->applyFromArray([
+                    'font' => ['bold' => true, 'size' => 11, 'color' => ['argb' => $darkHeader]],
+                    'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => $totalBg]],
+                    'borders' => [
+                        'top' => ['borderStyle' => Border::BORDER_THICK, 'color' => ['argb' => $darkHeader]],
+                        'bottom' => ['borderStyle' => Border::BORDER_THICK, 'color' => ['argb' => $darkHeader]],
+                    ],
+                ]);
+                $sheet->getStyle('A' . $dataRow)->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FFF0C2');
+                $sheet->getStyle($this->colLetter($annualCol) . $dataRow)->applyFromArray([
+                    'font' => ['bold' => true, 'size' => 12, 'color' => ['argb' => '1B5E20']],
+                    'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'A5D6A7']],
+                ]);
+                $sheet->getRowDimension($dataRow)->setRowHeight(22);
+            }
+
+            // Thin borders for all cells
+            $sheet->getStyle($fullRange)->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN)->getColor()->setARGB('DEE2E6');
+
+            // Re-apply strong borders for subtotal/total (they get overridden by thin)
+            if ($item['type'] === 'subtotal') {
+                $sheet->getStyle($fullRange)->getBorders()->getTop()->setBorderStyle(Border::BORDER_MEDIUM)->getColor()->setARGB($darkHeader);
+                $sheet->getStyle($fullRange)->getBorders()->getBottom()->setBorderStyle(Border::BORDER_MEDIUM)->getColor()->setARGB($darkHeader);
+            } elseif ($item['type'] === 'total') {
+                $sheet->getStyle($fullRange)->getBorders()->getTop()->setBorderStyle(Border::BORDER_THICK)->getColor()->setARGB($darkHeader);
+                $sheet->getStyle($fullRange)->getBorders()->getBottom()->setBorderStyle(Border::BORDER_THICK)->getColor()->setARGB($darkHeader);
+            } elseif ($item['type'] === 'section') {
+                $sheet->getStyle($fullRange)->getBorders()->getTop()->setBorderStyle(Border::BORDER_MEDIUM)->getColor()->setARGB($teal);
+            }
+
+            $dataRow++;
+        }
+
+        // ============================================
+        // COLUMN WIDTHS
+        // ============================================
+        $sheet->getColumnDimension('A')->setWidth(22); // Line Item
+        for ($c = 2; $c <= $lastCol; $c++) {
+            $sheet->getColumnDimension($this->colLetter($c))->setWidth(14);
+        }
+        // Slightly wider for totals
+        $sheet->getColumnDimension($this->colLetter($p1Col))->setWidth(16);
+        $sheet->getColumnDimension($this->colLetter($p2Col))->setWidth(16);
+        $sheet->getColumnDimension($this->colLetter($annualCol))->setWidth(16);
+
+        // ============================================
+        // FOOTER
+        // ============================================
+        $footerRow = $dataRow + 1;
+        $sheet->setCellValue('A' . $footerRow, 'Generated: ' . now()->format('d M Y H:i'));
+        $sheet->getStyle('A' . $footerRow)->getFont()->setSize(8)->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('999999'));
+
+        // ============================================
+        // FREEZE & PRINT
+        // ============================================
+        $sheet->freezePane('B5'); // Freeze row label column and header rows
+        $sheet->getPageSetup()->setOrientation(\PhpOffice\PhpSpreadsheet\Worksheet\PageSetup::ORIENTATION_LANDSCAPE);
+        $sheet->getPageSetup()->setFitToWidth(1);
+        $sheet->getPageSetup()->setFitToHeight(0);
+
+        // ============================================
+        // OUTPUT
+        // ============================================
+        $filename = 'EMP201_Pivot_' . $clientCode . '_' . $taxYear . '.xlsx';
+
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Cache-Control: max-age=0');
+
+        $writer = new Xlsx($spreadsheet);
+        $writer->save('php://output');
+        exit;
+    }
+
+    private function colLetter(int $col): string
+    {
+        return \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($col);
+    }
+
+    /**
+     * Statement of Account view
+     */
+    public function statement(Request $request)
+    {
+        $clients = DB::table('client_master')
+            ->where('is_active', 1)
+            ->orderBy('company_name')
+            ->get(['client_id', 'client_code', 'company_name']);
+
+        $taxYears = DB::table('cims_document_periods')
+            ->where('is_active', 1)
+            ->whereNotNull('tax_year')
+            ->select('tax_year')
+            ->distinct()
+            ->orderBy('tax_year', 'desc')
+            ->pluck('tax_year');
+
+        return view('cims_emp201::emp201.statement', compact('clients', 'taxYears'));
+    }
+
+    /**
+     * API: Statement of Account data
+     * Generates SARS EMPSA-style transaction details for a client/tax year
+     */
+    public function apiStatementData(Request $request)
+    {
+        $clientId = $request->get('client_id');
+        $taxYear  = $request->get('tax_year');
+
+        if (!$clientId || !$taxYear) {
+            return response()->json(['error' => 'Client and tax year required'], 400);
+        }
+
+        // Get client info
+        $client = DB::table('client_master')->where('client_id', $clientId)->first();
+        if (!$client) {
+            return response()->json(['error' => 'Client not found'], 404);
+        }
+
+        // Get client address - prioritise Registered, then fallback to any other
+        $address = null;
+        $addrLink = DB::table('client_master_addresses')
+            ->where('client_id', $clientId)
+            ->where('address_type', 'Registered')
+            ->first();
+        if (!$addrLink) {
+            // Fallback: try any other address for this client
+            $addrLink = DB::table('client_master_addresses')
+                ->where('client_id', $clientId)
+                ->whereNotNull('address_id')
+                ->first();
+        }
+        if ($addrLink && $addrLink->address_id) {
+            $address = DB::table('cims_addresses')
+                ->where('id', $addrLink->address_id)
+                ->first();
+        }
+
+        // SA payroll tax year months (March to February)
+        $prevYear = $taxYear - 1;
+        $months = [
+            ['month' => 3,  'label' => 'March',     'combo' => sprintf('%04d%02d', $taxYear, 1),  'year' => $prevYear, 'cal' => sprintf('%04d/%02d', $prevYear, 3)],
+            ['month' => 4,  'label' => 'April',     'combo' => sprintf('%04d%02d', $taxYear, 2),  'year' => $prevYear, 'cal' => sprintf('%04d/%02d', $prevYear, 4)],
+            ['month' => 5,  'label' => 'May',       'combo' => sprintf('%04d%02d', $taxYear, 3),  'year' => $prevYear, 'cal' => sprintf('%04d/%02d', $prevYear, 5)],
+            ['month' => 6,  'label' => 'June',      'combo' => sprintf('%04d%02d', $taxYear, 4),  'year' => $prevYear, 'cal' => sprintf('%04d/%02d', $prevYear, 6)],
+            ['month' => 7,  'label' => 'July',      'combo' => sprintf('%04d%02d', $taxYear, 5),  'year' => $prevYear, 'cal' => sprintf('%04d/%02d', $prevYear, 7)],
+            ['month' => 8,  'label' => 'August',    'combo' => sprintf('%04d%02d', $taxYear, 6),  'year' => $prevYear, 'cal' => sprintf('%04d/%02d', $prevYear, 8)],
+            ['month' => 9,  'label' => 'September', 'combo' => sprintf('%04d%02d', $taxYear, 7),  'year' => $prevYear, 'cal' => sprintf('%04d/%02d', $prevYear, 9)],
+            ['month' => 10, 'label' => 'October',   'combo' => sprintf('%04d%02d', $taxYear, 8),  'year' => $prevYear, 'cal' => sprintf('%04d/%02d', $prevYear, 10)],
+            ['month' => 11, 'label' => 'November',  'combo' => sprintf('%04d%02d', $taxYear, 9),  'year' => $prevYear, 'cal' => sprintf('%04d/%02d', $prevYear, 11)],
+            ['month' => 12, 'label' => 'December',  'combo' => sprintf('%04d%02d', $taxYear, 10), 'year' => $prevYear, 'cal' => sprintf('%04d/%02d', $prevYear, 12)],
+            ['month' => 1,  'label' => 'January',   'combo' => sprintf('%04d%02d', $taxYear, 11), 'year' => (int)$taxYear, 'cal' => sprintf('%04d/%02d', $taxYear, 1)],
+            ['month' => 2,  'label' => 'February',  'combo' => sprintf('%04d%02d', $taxYear, 12), 'year' => (int)$taxYear, 'cal' => sprintf('%04d/%02d', $taxYear, 2)],
+        ];
+
+        // Get all declarations for this client and tax year
+        $declarations = Emp201Declaration::where('client_id', $clientId)
+            ->where('financial_year', $taxYear)
+            ->get()
+            ->keyBy('period_combo');
+
+        // Also check previous year for balance brought forward
+        $prevYearDeclarations = Emp201Declaration::where('client_id', $clientId)
+            ->where('financial_year', $prevYear)
+            ->get();
+        $prevYearBalance = $prevYearDeclarations->sum('tax_payable') - $prevYearDeclarations->sum('amount_paid');
+
+        // Build period transaction data
+        $periods = [];
+        $totalPaye = 0;
+        $totalSdl = 0;
+        $totalUif = 0;
+        $totalOther = 0;
+        $totalBalance = 0;
+
+        foreach ($months as $m) {
+            $decl = $declarations->get($m['combo']);
+
+            if (!$decl) {
+                // No declaration for this period - skip
+                continue;
+            }
+
+            $periodLabel = $m['combo']; // e.g. 202601
+            $calDate = $m['cal'];       // e.g. 2025/03
+            $txns = [];
+
+            // 1. DECLARATION row
+            $declPaye = (float)($decl->paye_payable ?? 0);
+            $declSdl  = (float)($decl->sdl_payable ?? 0);
+            $declUif  = (float)($decl->uif_payable ?? 0);
+            $declTotal = $declPaye + $declSdl + $declUif;
+            $txns[] = [
+                'type'        => 'declaration',
+                'date'        => $calDate . '/07',
+                'reference'   => ($client->paye_number ?? '') . 'LC' . $periodLabel,
+                'description' => 'DECLARATION',
+                'value'       => $declTotal,
+                'paye'        => $declPaye,
+                'sdl'         => $declSdl,
+                'uif'         => $declUif,
+                'other'       => 0,
+                'balance'     => $declTotal,
+            ];
+
+            $runBalance = $declTotal;
+
+            // 2. PENALTIES AND INTEREST row (if any)
+            $penaltyInterest = (float)($decl->penalty_interest ?? 0);
+            if ($penaltyInterest != 0) {
+                $runBalance += $penaltyInterest;
+                $txns[] = [
+                    'type'        => 'penalty_interest',
+                    'date'        => $calDate . '/08',
+                    'reference'   => '',
+                    'description' => 'PENALTIES AND INTEREST',
+                    'value'       => $penaltyInterest,
+                    'paye'        => 0,
+                    'sdl'         => 0,
+                    'uif'         => 0,
+                    'other'       => $penaltyInterest,
+                    'balance'     => $runBalance,
+                ];
+            }
+
+            // 4. PAYMENT row (if amount_paid > 0)
+            $paid = (float)($decl->amount_paid ?? $decl->payment_amount ?? 0);
+            if ($paid != 0) {
+                $payRef = $decl->payment_ref_no ?? $decl->payment_reference ?? '';
+                $payDate = $decl->payment_date ? date('Y/m/d', strtotime($decl->payment_date)) : ($calDate . '/25');
+                $runBalance -= $paid;
+                $txns[] = [
+                    'type'        => 'payment',
+                    'date'        => $payDate,
+                    'reference'   => ($client->paye_number ?? '') . ($payRef ? 'LX' . $payRef : ''),
+                    'description' => 'PAYMENT (RECEIPT NO.' . ($payRef ?: 'N/A') . ')',
+                    'value'       => -$paid,
+                    'paye'        => -$paid,
+                    'sdl'         => 0,
+                    'uif'         => 0,
+                    'other'       => 0,
+                    'balance'     => $runBalance,
+                ];
+            }
+
+            // 5. ADJUSTMENT row (if 'other' field > 0)
+            $other = (float)($decl->other ?? 0);
+            if ($other != 0) {
+                $runBalance += $other;
+                $txns[] = [
+                    'type'        => 'adjustment',
+                    'date'        => '',
+                    'reference'   => '',
+                    'description' => 'ADJUSTMENT',
+                    'value'       => $other,
+                    'paye'        => $other,
+                    'sdl'         => 0,
+                    'uif'         => 0,
+                    'other'       => 0,
+                    'balance'     => $runBalance,
+                ];
+            }
+
+            // 6. TOTAL LIABILITY row
+            $totalLiability = $declTotal + $penaltyInterest + $other;
+            $txns[] = [
+                'type'        => 'total_liability',
+                'date'        => '',
+                'reference'   => '',
+                'description' => 'TOTAL LIABILITY',
+                'value'       => $totalLiability,
+                'paye'        => $declPaye,
+                'sdl'         => $declSdl,
+                'uif'         => $declUif,
+                'other'       => $penaltyInterest,
+                'balance'     => 0,
+            ];
+
+            // 7. FINANCIAL MOVEMENT row
+            $financialMovement = -($paid ?: 0);
+            $txns[] = [
+                'type'        => 'financial_movement',
+                'date'        => '',
+                'reference'   => '',
+                'description' => 'FINANCIAL MOVEMENT',
+                'value'       => $financialMovement,
+                'paye'        => 0,
+                'sdl'         => 0,
+                'uif'         => 0,
+                'other'       => 0,
+                'balance'     => 0,
+            ];
+
+            // Period balance
+            $balPaye  = $declPaye - ($paid > 0 ? $paid : 0);
+            $balSdl   = $declSdl;
+            $balUif   = $declUif;
+            $balOther = $penaltyInterest;
+            $balTotal = $runBalance;
+
+            $totalPaye  += $balPaye;
+            $totalSdl   += $balSdl;
+            $totalUif   += $balUif;
+            $totalOther += $balOther;
+            $totalBalance += $balTotal;
+
+            $periods[] = [
+                'period_label'   => $periodLabel,
+                'month_label'    => $m['label'] . ' ' . $m['year'],
+                'transactions'   => $txns,
+                'balance_paye'   => round($balPaye, 2),
+                'balance_sdl'    => round($balSdl, 2),
+                'balance_uif'    => round($balUif, 2),
+                'balance_other'  => round($balOther, 2),
+                'balance_total'  => round($balTotal, 2),
+            ];
+        }
+
+        // Current year balance
+        $currentYearBalance = $totalBalance;
+
+        // Aging calculation (simplified)
+        // Put all balance in 120+ days bucket for now since this is historical data
+        $aging = [
+            'current' => 0,
+            'days30'  => 0,
+            'days60'  => 0,
+            'days90'  => 0,
+            'days120' => round($currentYearBalance + $prevYearBalance, 2),
+            'total'   => round($currentYearBalance + $prevYearBalance, 2),
+        ];
+
+        // Outstanding EMP201 - count periods without declarations
+        $declaredCombos = $declarations->keys()->toArray();
+        $allCombos = array_column($months, 'combo');
+        $outstandingPeriods = array_diff($allCombos, $declaredCombos);
+        $outstandingLabels = [];
+        foreach ($months as $m) {
+            if (in_array($m['combo'], $outstandingPeriods)) {
+                $outstandingLabels[] = $m['label'] . ' ' . $m['year'];
+            }
+        }
+
+        return response()->json([
+            'client' => [
+                'company_name'     => $client->company_name ?? '',
+                'trading_name'     => $client->trading_name ?? '',
+                'client_code'      => $client->client_code ?? '',
+                'company_number'   => $client->company_reg_number ?? '',
+                'email'            => $client->email ?? '',
+                'paye_number'      => $client->paye_number ?? '',
+                'sdl_number'       => $client->sdl_number ?? '',
+                'uif_number'       => $client->uif_number ?? '',
+                'vat_number'       => $client->vat_number ?? '',
+                'income_tax_number'=> $client->tax_number ?? '',
+                'tax_reg_date'     => $client->tax_reg_date ?? '',
+                'address'          => $address ? [
+                    'street_number' => $address->street_number ?? '',
+                    'street_name'   => $address->street_name ?? '',
+                    'suburb'        => $address->suburb ?? '',
+                    'city'          => $address->city ?? '',
+                    'province'      => $address->province ?? '',
+                    'postal_code'   => $address->postal_code ?? '',
+                ] : null,
+            ],
+            'tax_year'    => $taxYear,
+            'today'       => now()->format('Y/m/d'),
+            'periods'     => $periods,
+            'summary'     => [
+                'prev_year_balance'    => round($prevYearBalance, 2),
+                'current_year_balance' => round($currentYearBalance, 2),
+                'closing_balance'      => round($prevYearBalance + $currentYearBalance, 2),
+            ],
+            'aging'       => $aging,
+            'compliance'  => [
+                'outstanding_emp201' => count($outstandingLabels) > 0 ? implode(', ', $outstandingLabels) : 'None',
+            ],
+        ]);
+    }
+
+    /**
+     * Export Statement of Account to styled Excel (.xlsx)
+     */
+    public function exportStatementExcel(Request $request)
+    {
+        $clientId = $request->get('client_id');
+        $taxYear  = $request->get('tax_year');
+
+        if (!$clientId || !$taxYear) {
+            return redirect()->back()->with('error', 'Client and tax year required.');
+        }
+
+        // Re-use apiStatementData to get the data
+        $response = $this->apiStatementData($request);
+        $data = json_decode($response->getContent(), true);
+
+        $client = $data['client'];
+        $periods = $data['periods'];
+        $summary = $data['summary'];
+        $aging = $data['aging'];
+
+        // Create spreadsheet
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Statement of Account');
+
+        // Colors
+        $darkBlue = '003366';
+        $white    = 'FFFFFF';
+        $lightBg  = 'E8EEF4';
+        $cumBg    = 'D4E5F7';
+
+        // --- HEADER ---
+        $sheet->mergeCells('A1:H1');
+        $sheet->setCellValue('A1', 'SARS - EMPLOYMENT TAXES - Statement of Account (EMPSA)');
+        $sheet->getStyle('A1')->applyFromArray([
+            'font' => ['bold' => true, 'size' => 14, 'color' => ['argb' => $white]],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => $darkBlue]],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+        ]);
+        $sheet->getRowDimension(1)->setRowHeight(30);
+
+        // --- CLIENT INFO ---
+        $sheet->setCellValue('A3', 'Client:');
+        $sheet->setCellValue('B3', $client['company_name']);
+        $sheet->setCellValue('A4', 'PAYE Reference:');
+        $sheet->setCellValue('B4', $client['paye_number']);
+        $sheet->setCellValue('A5', 'Tax Year:');
+        $sheet->setCellValue('B5', $taxYear);
+        $sheet->setCellValue('A6', 'Statement Period:');
+        $prevYear = $taxYear - 1;
+        $sheet->setCellValue('B6', $prevYear . '/03/01 to ' . $taxYear . '/02/28');
+        $sheet->getStyle('A3:A6')->getFont()->setBold(true)->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color($darkBlue));
+
+        // --- SUMMARY ---
+        $row = 8;
+        $sheet->mergeCells("A{$row}:H{$row}");
+        $sheet->setCellValue("A{$row}", 'Summary Information: Employer Reconciliation');
+        $sheet->getStyle("A{$row}")->applyFromArray([
+            'font' => ['bold' => true, 'size' => 11, 'color' => ['argb' => $white]],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => $darkBlue]],
+        ]);
+        $row++;
+        $sheet->setCellValue("A{$row}", 'PAYE/SDL/UIF YEAR ' . $prevYear);
+        $sheet->setCellValue("H{$row}", $summary['prev_year_balance']);
+        $sheet->getStyle("H{$row}")->getNumberFormat()->setFormatCode('#,##0.00');
+        $row++;
+        $sheet->setCellValue("A{$row}", 'PAYE/SDL/UIF YEAR ' . $taxYear);
+        $sheet->setCellValue("H{$row}", $summary['current_year_balance']);
+        $sheet->getStyle("H{$row}")->getNumberFormat()->setFormatCode('#,##0.00');
+        $row++;
+        $sheet->setCellValue("A{$row}", 'CLOSING BALANCE');
+        $sheet->setCellValue("H{$row}", $summary['closing_balance']);
+        $sheet->getStyle("A{$row}:H{$row}")->applyFromArray([
+            'font' => ['bold' => true, 'color' => ['argb' => $darkBlue]],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => $lightBg]],
+            'borders' => ['top' => ['borderStyle' => Border::BORDER_MEDIUM, 'color' => ['argb' => $darkBlue]]],
+        ]);
+        $sheet->getStyle("H{$row}")->getNumberFormat()->setFormatCode('#,##0.00');
+
+        // --- TRANSACTION HEADER ---
+        $row += 2;
+        $headers = ['Date', 'Transaction Reference', 'Transaction Description', 'Transaction Value', 'PAYE', 'SDL', 'UIF', 'Account Balance'];
+        foreach ($headers as $i => $h) {
+            $col = $i + 1;
+            $sheet->setCellValueByColumnAndRow($col, $row, $h);
+        }
+        $hdrRange = "A{$row}:H{$row}";
+        $sheet->getStyle($hdrRange)->applyFromArray([
+            'font' => ['bold' => true, 'size' => 10, 'color' => ['argb' => $white]],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => $darkBlue]],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'wrapText' => true],
+            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => '002244']]],
+        ]);
+        $sheet->getRowDimension($row)->setRowHeight(24);
+
+        // --- TRANSACTION DATA ---
+        $row++;
+        $cumulativePaye = 0; $cumulativeSdl = 0; $cumulativeUif = 0; $cumulativeBalance = 0;
+
+        foreach ($periods as $period) {
+            foreach ($period['transactions'] as $txn) {
+                $sheet->setCellValueByColumnAndRow(1, $row, $txn['date'] ?? '');
+                $sheet->setCellValueByColumnAndRow(2, $row, $txn['reference'] ?? '');
+                $sheet->setCellValueByColumnAndRow(3, $row, $txn['description'] ?? '');
+                $sheet->setCellValueByColumnAndRow(4, $row, $txn['value']);
+                $sheet->setCellValueByColumnAndRow(5, $row, $txn['paye']);
+                $sheet->setCellValueByColumnAndRow(6, $row, $txn['sdl']);
+                $sheet->setCellValueByColumnAndRow(7, $row, $txn['uif']);
+                $sheet->setCellValueByColumnAndRow(8, $row, $txn['balance']);
+
+                $sheet->getStyle("D{$row}:H{$row}")->getNumberFormat()->setFormatCode('#,##0.00');
+                $sheet->getStyle("A{$row}:H{$row}")->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN)->getColor()->setARGB('DEE2E6');
+                $row++;
+            }
+
+            // Period balance row
+            $sheet->mergeCells("A{$row}:D{$row}");
+            $sheet->setCellValueByColumnAndRow(1, $row, 'BALANCE: TAX PERIOD ' . $period['period_label']);
+            $sheet->setCellValueByColumnAndRow(5, $row, $period['balance_paye']);
+            $sheet->setCellValueByColumnAndRow(6, $row, $period['balance_sdl']);
+            $sheet->setCellValueByColumnAndRow(7, $row, $period['balance_uif']);
+            $sheet->setCellValueByColumnAndRow(8, $row, $period['balance_total']);
+            $sheet->getStyle("A{$row}:H{$row}")->applyFromArray([
+                'font' => ['bold' => true, 'color' => ['argb' => $darkBlue]],
+                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => $lightBg]],
+                'borders' => [
+                    'top' => ['borderStyle' => Border::BORDER_MEDIUM, 'color' => ['argb' => $darkBlue]],
+                    'bottom' => ['borderStyle' => Border::BORDER_MEDIUM, 'color' => ['argb' => $darkBlue]],
+                ],
+            ]);
+            $sheet->getStyle("E{$row}:H{$row}")->getNumberFormat()->setFormatCode('#,##0.00');
+
+            $cumulativePaye += $period['balance_paye'];
+            $cumulativeSdl += $period['balance_sdl'];
+            $cumulativeUif += $period['balance_uif'];
+            $cumulativeBalance += $period['balance_total'];
+            $row++;
+        }
+
+        // Cumulative balance row
+        $sheet->mergeCells("A{$row}:D{$row}");
+        $sheet->setCellValueByColumnAndRow(1, $row, 'CUMULATIVE BALANCE');
+        $sheet->setCellValueByColumnAndRow(5, $row, round($cumulativePaye, 2));
+        $sheet->setCellValueByColumnAndRow(6, $row, round($cumulativeSdl, 2));
+        $sheet->setCellValueByColumnAndRow(7, $row, round($cumulativeUif, 2));
+        $sheet->setCellValueByColumnAndRow(8, $row, round($cumulativeBalance, 2));
+        $sheet->getStyle("A{$row}:H{$row}")->applyFromArray([
+            'font' => ['bold' => true, 'size' => 11, 'color' => ['argb' => $darkBlue]],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => $cumBg]],
+            'borders' => ['top' => ['borderStyle' => Border::BORDER_THICK, 'color' => ['argb' => $darkBlue]]],
+        ]);
+        $sheet->getStyle("E{$row}:H{$row}")->getNumberFormat()->setFormatCode('#,##0.00');
+
+        // --- AGING ---
+        $row += 2;
+        $sheet->mergeCells("A{$row}:H{$row}");
+        $sheet->setCellValue("A{$row}", 'Ageing');
+        $sheet->getStyle("A{$row}")->applyFromArray([
+            'font' => ['bold' => true, 'color' => ['argb' => $white]],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => $darkBlue]],
+        ]);
+        $row++;
+        $agingHeaders = ['Current', '30 Days', '60 Days', '90 Days', '120 Days', 'Total'];
+        foreach ($agingHeaders as $i => $h) {
+            $sheet->setCellValueByColumnAndRow($i + 1, $row, $h);
+        }
+        $sheet->getStyle("A{$row}:F{$row}")->applyFromArray([
+            'font' => ['bold' => true],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => $lightBg]],
+        ]);
+        $row++;
+        $sheet->setCellValueByColumnAndRow(1, $row, $aging['current']);
+        $sheet->setCellValueByColumnAndRow(2, $row, $aging['days30']);
+        $sheet->setCellValueByColumnAndRow(3, $row, $aging['days60']);
+        $sheet->setCellValueByColumnAndRow(4, $row, $aging['days90']);
+        $sheet->setCellValueByColumnAndRow(5, $row, $aging['days120']);
+        $sheet->setCellValueByColumnAndRow(6, $row, $aging['total']);
+        $sheet->getStyle("A{$row}:F{$row}")->getNumberFormat()->setFormatCode('#,##0.00');
+
+        // --- COLUMN WIDTHS ---
+        $sheet->getColumnDimension('A')->setWidth(14);
+        $sheet->getColumnDimension('B')->setWidth(22);
+        $sheet->getColumnDimension('C')->setWidth(30);
+        $sheet->getColumnDimension('D')->setWidth(16);
+        $sheet->getColumnDimension('E')->setWidth(14);
+        $sheet->getColumnDimension('F')->setWidth(14);
+        $sheet->getColumnDimension('G')->setWidth(14);
+        $sheet->getColumnDimension('H')->setWidth(16);
+
+        // --- OUTPUT ---
+        $clientCode = $client['client_code'] ?: 'EMPSA';
+        $filename = 'EMPSA_Statement_' . $clientCode . '_' . $taxYear . '.xlsx';
+
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Cache-Control: max-age=0');
+
+        $writer = new Xlsx($spreadsheet);
+        $writer->save('php://output');
+        exit;
+    }
+
+    /**
+     * Generate EMPSA Statement PDF, save to document storage, return document record.
+     * This is the central PDF generation method used by both PDF button and Email button.
+     */
+    private function generateAndStoreStatementPdf($clientId, $taxYear)
+    {
+        // Get statement data using the same method as the API
+        $fakeRequest = new Request(['client_id' => $clientId, 'tax_year' => $taxYear]);
+        $response = $this->apiStatementData($fakeRequest);
+        $data = json_decode($response->getContent(), true);
+        $client = $data['client'];
+        $clientCode = $client['client_code'] ?: 'EMPSA';
+
+        // Generate PDF using DomPDF with table-based template
+        $pdf = Pdf::loadView('cims_emp201::emp201.statement_pdf', ['data' => $data]);
+        $pdf->setPaper('a4', 'portrait');
+        $pdfContent = $pdf->output();
+
+        // Generate stored filename using same convention as Client Master
+        $docType = 'EMPSA - Statement of Account';
+        $storedFilename = Document::generateStoredFilename($clientCode, $docType, 'pdf');
+
+        // Save to document storage: client_master_docs/{CLIENT_CODE}/
+        // base_path('../storage/') resolves to public_html/storage/ on this server
+        $storagePath = 'client_master_docs/' . $clientCode;
+        $fullDir = base_path('../storage/' . $storagePath);
+        if (!is_dir($fullDir)) {
+            mkdir($fullDir, 0755, true);
+        }
+        $fullFilePath = $fullDir . '/' . $storedFilename;
+        file_put_contents($fullFilePath, $pdfContent);
+        $fileSize = strlen($pdfContent);
+
+        // Create document record in cims_documents table
+        $document = Document::create([
+            'client_id'          => $clientId,
+            'client_code'        => $clientCode,
+            'client_name'        => $client['company_name'] ?? '',
+            'title'              => $storedFilename,
+            'document_ref'       => 'EMPSA',
+            'document_code'      => 'EMPSA_SOA',
+            'doc_group'          => 'SARS Returns',
+            'file_original_name' => 'EMPSA_Statement_' . $clientCode . '_' . $taxYear . '.pdf',
+            'file_stored_name'   => $storedFilename,
+            'file_path'          => $storagePath . '/' . $storedFilename,
+            'file_mime_type'     => 'application/pdf',
+            'financial_year'     => $taxYear,
+            'description'        => 'EMPSA Statement of Account for ' . ($client['company_name'] ?? '') . ' - Tax Year ' . $taxYear,
+            'uploaded_by'        => Auth::check() ? Auth::user()->name : 'System',
+            'created_by'         => Auth::check() ? Auth::user()->id : null,
+            'status'             => 1,
+            'show_as_current'    => true,
+            'created_at'         => now(),
+            'updated_at'         => now(),
+        ]);
+
+        // Set file_size directly (not in fillable but column exists)
+        DB::table('cims_documents')->where('id', $document->id)->update(['file_size' => $fileSize]);
+
+        return [
+            'document'    => $document,
+            'file_path'   => $fullFilePath,
+            'file_name'   => $storedFilename,
+            'data'        => $data,
+        ];
+    }
+
+    /**
+     * Generate PDF and redirect to document viewer.
+     * Called when user clicks the pink PDF button.
+     */
+    public function generateStatementPdf(Request $request)
+    {
+        $clientId = $request->get('client_id');
+        $taxYear  = $request->get('tax_year');
+
+        if (!$clientId || !$taxYear) {
+            return response()->json(['error' => 'Client and tax year are required.'], 400);
+        }
+
+        try {
+            $result = $this->generateAndStoreStatementPdf($clientId, $taxYear);
+            $document = $result['document'];
+
+            return response()->json([
+                'success'     => true,
+                'document_id' => $document->id,
+                'view_url'    => route('cimsdocmanager.view', $document->id),
+                'message'     => 'PDF generated and stored successfully.',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Failed to generate PDF: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Send Statement of Account via email.
+     * Uses centralized PDF generation that stores the document.
+     */
+    public function sendStatementEmail(Request $request)
+    {
+        $clientId = $request->get('client_id');
+        $taxYear  = $request->get('tax_year');
+        $emailTo  = $request->get('email_to');
+        $subject  = $request->get('subject', 'EMPSA Statement of Account');
+        $message  = $request->get('message', '');
+        $sendCopy = $request->get('send_copy', 0);
+
+        if (!$clientId || !$taxYear || !$emailTo) {
+            return response()->json(['error' => 'Client, tax year and email address are required.'], 400);
+        }
+
+        if (!filter_var($emailTo, FILTER_VALIDATE_EMAIL)) {
+            return response()->json(['error' => 'Invalid email address.'], 400);
+        }
+
+        try {
+            // Generate and store PDF using centralized method
+            $pdfResult = $this->generateAndStoreStatementPdf($clientId, $taxYear);
+            $pdfFilePath = $pdfResult['file_path'];
+            $pdfFileName = $pdfResult['file_name'];
+            $data = $pdfResult['data'];
+            $client = $data['client'];
+
+            // Generate a temp Excel file for email attachment
+            $response = $this->apiStatementData($request);
+            $excelData = json_decode($response->getContent(), true);
+
+            $spreadsheet = new Spreadsheet();
+            $sheet = $spreadsheet->getActiveSheet();
+            $sheet->setTitle('Statement of Account');
+
+            $darkBlue = '003366';
+            $lightBlue = 'E8EEF4';
+            $white = 'FFFFFF';
+
+            $sheet->mergeCells('A1:H1');
+            $sheet->setCellValue('A1', 'SARS - EMPLOYMENT TAXES - STATEMENT OF ACCOUNT (EMPSA)');
+            $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14)->getColor()->setRGB($white);
+            $sheet->getStyle('A1')->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB($darkBlue);
+            $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+            $sheet->getRowDimension(1)->setRowHeight(30);
+
+            $sheet->setCellValue('A3', 'Client:');
+            $sheet->setCellValue('B3', $client['company_name']);
+            $sheet->setCellValue('A4', 'PAYE Ref:');
+            $sheet->setCellValue('B4', $client['paye_number']);
+            $sheet->setCellValue('A5', 'Tax Year:');
+            $sheet->setCellValue('B5', $data['tax_year']);
+            $sheet->setCellValue('A6', 'Date:');
+            $sheet->setCellValue('B6', $data['today']);
+            $sheet->getStyle('A3:A6')->getFont()->setBold(true);
+
+            $row = 8;
+            $sheet->mergeCells("A{$row}:H{$row}");
+            $sheet->setCellValue("A{$row}", 'Summary Information: Employer Reconciliation');
+            $sheet->getStyle("A{$row}")->getFont()->setBold(true)->getColor()->setRGB($white);
+            $sheet->getStyle("A{$row}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB($darkBlue);
+            $row++;
+
+            $prevYear = (int)$data['tax_year'] - 1;
+            $sheet->setCellValue("A{$row}", "PAYE/SDL/UIF YEAR {$prevYear}");
+            $sheet->setCellValue("B{$row}", $data['summary']['prev_year_balance']);
+            $sheet->getStyle("B{$row}")->getNumberFormat()->setFormatCode('#,##0.00');
+            $row++;
+            $sheet->setCellValue("A{$row}", "PAYE/SDL/UIF YEAR {$data['tax_year']}");
+            $sheet->setCellValue("B{$row}", $data['summary']['current_year_balance']);
+            $sheet->getStyle("B{$row}")->getNumberFormat()->setFormatCode('#,##0.00');
+            $row++;
+            $sheet->setCellValue("A{$row}", 'CLOSING BALANCE');
+            $sheet->setCellValue("B{$row}", $data['summary']['closing_balance']);
+            $sheet->getStyle("A{$row}:B{$row}")->getFont()->setBold(true);
+            $sheet->getStyle("B{$row}")->getNumberFormat()->setFormatCode('#,##0.00');
+            $sheet->getStyle("A{$row}:B{$row}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB($lightBlue);
+
+            $row += 2;
+            $headers = ['Date', 'Reference', 'Description', 'Transaction Value', 'PAYE', 'SDL', 'UIF', 'Account Balance'];
+            $cols = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+
+            $sheet->mergeCells("A{$row}:H{$row}");
+            $sheet->setCellValue("A{$row}", 'Transaction Details');
+            $sheet->getStyle("A{$row}")->getFont()->setBold(true)->getColor()->setRGB($white);
+            $sheet->getStyle("A{$row}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB($darkBlue);
+            $row++;
+
+            foreach ($headers as $i => $h) {
+                $sheet->setCellValue($cols[$i] . $row, $h);
+            }
+            $sheet->getStyle("A{$row}:H{$row}")->getFont()->setBold(true)->getColor()->setRGB($white);
+            $sheet->getStyle("A{$row}:H{$row}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB($darkBlue);
+            $row++;
+
+            foreach ($data['periods'] as $period) {
+                foreach ($period['transactions'] as $txn) {
+                    $sheet->setCellValue("A{$row}", $txn['date'] ?? '');
+                    $sheet->setCellValue("B{$row}", $txn['reference'] ?? '');
+                    $sheet->setCellValue("C{$row}", $txn['description'] ?? '');
+                    $sheet->setCellValue("D{$row}", $txn['value']);
+                    $sheet->setCellValue("E{$row}", $txn['paye']);
+                    $sheet->setCellValue("F{$row}", $txn['sdl']);
+                    $sheet->setCellValue("G{$row}", $txn['uif']);
+                    $sheet->setCellValue("H{$row}", $txn['balance']);
+                    $sheet->getStyle("D{$row}:H{$row}")->getNumberFormat()->setFormatCode('#,##0.00');
+                    $row++;
+                }
+                $sheet->setCellValue("A{$row}", 'BALANCE: TAX PERIOD ' . $period['period_label']);
+                $sheet->mergeCells("A{$row}:D{$row}");
+                $sheet->setCellValue("E{$row}", $period['balance_paye']);
+                $sheet->setCellValue("F{$row}", $period['balance_sdl']);
+                $sheet->setCellValue("G{$row}", $period['balance_uif']);
+                $sheet->setCellValue("H{$row}", $period['balance_total']);
+                $sheet->getStyle("A{$row}:H{$row}")->getFont()->setBold(true);
+                $sheet->getStyle("A{$row}:H{$row}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB($lightBlue);
+                $sheet->getStyle("E{$row}:H{$row}")->getNumberFormat()->setFormatCode('#,##0.00');
+                $row++;
+            }
+
+            foreach ($cols as $col) {
+                $sheet->getColumnDimension($col)->setAutoSize(true);
+            }
+
+            $excelFileName = 'EMPSA_Statement_' . ($client['client_code'] ?: 'export') . '_' . $data['tax_year'] . '.xlsx';
+            $excelTempPath = storage_path('app/' . $excelFileName);
+            $writer = new Xlsx($spreadsheet);
+            $writer->save($excelTempPath);
+
+            // Get from address from system config
+            $fromAddress = config('system.settings_email_from_address', 'cims@smartweigh.co.za');
+            $fromName    = config('system.settings_email_from_name', 'CIMS');
+
+            // Build recipients list
+            $ccList = [];
+            if ($sendCopy && Auth::check()) {
+                $userEmail = Auth::user()->email;
+                if ($userEmail && $userEmail !== $emailTo) {
+                    $ccList[] = $userEmail;
+                }
+            }
+
+            // Send email with both attachments (PDF from document storage + temp Excel)
+            Mail::raw($message ?: 'Please find attached your EMPSA Statement of Account.', function ($mail) use ($emailTo, $ccList, $subject, $fromAddress, $fromName, $excelTempPath, $excelFileName, $pdfFilePath, $pdfFileName) {
+                $mail->from($fromAddress, $fromName)
+                     ->to($emailTo)
+                     ->subject($subject)
+                     ->attach($excelTempPath, [
+                         'as' => $excelFileName,
+                         'mime' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                     ])
+                     ->attach($pdfFilePath, [
+                         'as' => $pdfFileName,
+                         'mime' => 'application/pdf',
+                     ]);
+                if (!empty($ccList)) {
+                    $mail->cc($ccList);
+                }
+            });
+
+            // Clean up temp Excel file only (PDF stays in document storage)
+            if (file_exists($excelTempPath)) {
+                unlink($excelTempPath);
+            }
+
+            return response()->json(['message' => 'Statement emailed successfully to ' . $emailTo]);
+
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Failed to send email: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function apiClientDetail($id)
+    {
+        $client = DB::table('client_master')->where('client_id', $id)->first();
+        if (!$client) {
+            return response()->json(['error' => 'Client not found'], 404);
+        }
+        return response()->json($client);
+    }
+
+    public function apiSarsRepresentative($clientId)
+    {
+        // Look for SARS Representative (director_type_id = 3) in client_master_directors
+        $sarsRep = DB::table('client_master_directors')
+            ->where('client_id', $clientId)
+            ->where('director_type_id', 3)
+            ->where('is_active', 1)
+            ->first();
+
+        if (!$sarsRep) {
+            // Fallback: try first active director
+            $sarsRep = DB::table('client_master_directors')
+                ->where('client_id', $clientId)
+                ->where('is_active', 1)
+                ->first();
+        }
+
+        if (!$sarsRep) {
+            return response()->json(['found' => false]);
+        }
+
+        return response()->json([
+            'found' => true,
+            'first_name' => $sarsRep->firstname ?? '',
+            'surname' => $sarsRep->surname ?? '',
+            'position' => $sarsRep->director_type_name ?? '',
+            'mobile_phone' => $sarsRep->mobile_phone ?? '',
+            'office_phone' => $sarsRep->office_phone ?? '',
+            'email' => $sarsRep->email ?? '',
+        ]);
+    }
+
+    public function apiPeriods(Request $request)
+    {
+        $query = DB::table('cims_document_periods')
+            ->where('is_active', 1);
+
+        if ($request->filled('tax_year')) {
+            $query->where('tax_year', $request->get('tax_year'));
+        }
+
+        // Exclude "Tax Year" entries (annual summaries) - show only PAYE monthly periods
+        $query->whereRaw("period_name NOT LIKE '%Tax Year%'");
+
+        $periods = $query->orderBy('display_order', 'asc')->get();
+
+        return response()->json($periods);
+    }
+
+    private function getFormData(Request $request): array
+    {
+        $data = $request->only([
+            // Client reference
+            'client_id', 'client_code', 'company_name', 'company_number', 'vat_number',
+            'income_tax_number', 'trading_name',
+            // Tax references
+            'paye_number', 'sdl_number', 'uif_number',
+            // Contact / Public Officer
+            'first_name', 'surname', 'position',
+            'telephone_number', 'mobile_number', 'email',
+            // Period
+            'period_id', 'pay_period', 'financial_year', 'period_combo', 'payment_period',
+            // Payroll Tax
+            'paye_liability', 'sdl_liability', 'uif_liability', 'payroll_liability',
+            // ETI
+            'eti_indicator', 'eti_brought_forward', 'eti_calculated', 'eti_utilised', 'eti_carry_forward',
+            // Total Payable
+            'paye_payable', 'sdl_payable', 'uif_payable', 'penalty_interest', 'tax_payable',
+            // Payment Reference
+            'payment_reference', 'check_digit',
+            // Payment Information
+            'payment_date', 'payment_method', 'amount_paid', 'payment_ref_no', 'payment_notes',
+            // VDP
+            'vdp_agreement', 'vdp_application_no',
+            // Tax Practitioner
+            'tax_practitioner_reg_no', 'tax_practitioner_tel_no',
+            // Declaration
+            'declaration_date', 'prepared_by', 'approved_by',
+            // Notes
+            'notes',
+            // User
+            'user_id',
+            // Status
+            'status',
+            // SARS Workflow Status
+            'emp201_status',
+        ]);
+
+        // Clean numeric fields - remove spaces and formatting
+        $numericFields = [
+            'paye_liability', 'sdl_liability', 'uif_liability', 'payroll_liability',
+            'eti_brought_forward', 'eti_calculated', 'eti_utilised', 'eti_carry_forward',
+            'paye_payable', 'sdl_payable', 'uif_payable', 'penalty_interest', 'tax_payable',
+            'amount_paid',
+        ];
+        foreach ($numericFields as $field) {
+            if (isset($data[$field])) {
+                $data[$field] = str_replace([' ', ','], '', $data[$field]);
+                $data[$field] = (float) $data[$field];
+            }
+        }
+
+        // Default status to 1 (active) if not set
+        if (!isset($data['status'])) {
+            $data['status'] = 1;
+        }
+
+        return $data;
+    }
+
+    /**
+     * Handle document uploads using the same pattern as Client Master.
+     * Stores files in client_master_docs/{CLIENT_CODE}/ with versioned naming.
+     * Creates records in cims_documents table.
+     */
+    private function handleDocumentUploads(Request $request, Emp201Declaration $declaration)
+    {
+        // Map: form field => [doc_ref, file_stored_name_column, uploaded_flag_column]
+        $docFields = [
+            'file_emp201_return'    => ['EMP201_RETURN', 'file_emp201_return', 'file_emp201_return_uploaded'],
+            'file_emp201_statement' => ['EMP201_STATEMENT', 'file_emp201_statement', 'file_emp201_statement_uploaded'],
+            'file_working_papers'   => ['EMP201_WORKING', 'file_working_papers', 'file_working_papers_uploaded'],
+            'file_emp201_pack'      => ['EMP201_PACK', 'file_emp201_pack', 'file_emp201_pack_uploaded'],
+            'file_proof_of_payment' => ['EMP201_POP', 'file_proof_of_payment', 'file_proof_of_payment_uploaded'],
+        ];
+
+        foreach ($docFields as $fieldName => [$docRef, $storedNameCol, $uploadedFlagCol]) {
+            if ($request->hasFile($fieldName)) {
+                $this->uploadEmp201Document($request->file($fieldName), $declaration, $docRef, $storedNameCol, $uploadedFlagCol);
+            }
+        }
+    }
+
+    private function uploadEmp201Document($file, Emp201Declaration $declaration, string $docRef, string $storedNameCol, string $uploadedFlagCol)
+    {
+        $documentType = DB::table('cims_document_types')->where('doc_ref', $docRef)->first();
+        if (!$documentType) {
+            return;
+        }
+
+        $clientCode = $declaration->client_code ?: 'EMP201';
+        $originalFilename = $file->getClientOriginalName();
+        $extension = $file->getClientOriginalExtension();
+        $fileSize = $file->getSize();
+        $mimeType = $file->getMimeType();
+
+        // Generate stored filename using same convention as Client Master
+        $codeType = $documentType->doc_group . ' - ' . $documentType->name;
+        $storedFilename = Document::generateStoredFilename($clientCode, $codeType, $extension);
+
+        // Store in same location as Client Master docs
+        $storagePath = 'client_master_docs/' . $clientCode;
+        $fullPath = base_path('../storage/' . $storagePath);
+        if (!is_dir($fullPath)) {
+            mkdir($fullPath, 0755, true);
+        }
+        $file->move($fullPath, $storedFilename);
+        $filePath = $storagePath . '/' . $storedFilename;
+
+        // Create document record in cims_documents table
+        $document = Document::create([
+            'client_id'          => $declaration->client_id,
+            'client_code'        => $clientCode,
+            'title'              => $storedFilename,
+            'document_ref'       => $documentType->doc_group,
+            'document_code'      => $documentType->doc_ref,
+            'doc_group'          => $documentType->doc_group,
+            'category_id'        => $documentType->category_id ?? null,
+            'type_id'            => $documentType->id,
+            'file_original_name' => $originalFilename,
+            'file_stored_name'   => $storedFilename,
+            'file_path'          => $filePath,
+            'file_size'          => $fileSize,
+            'file_mime_type'     => $mimeType,
+            'created_at'         => now(),
+            'updated_at'         => now(),
+        ]);
+
+        // Update the declaration record with stored filename and flag
+        $declaration->update([
+            $storedNameCol  => $storedFilename,
+            $uploadedFlagCol => 1,
+        ]);
+    }
+
+    /**
+     * AJAX: Check if a duplicate EMP201 declaration exists for the same client + period.
+     */
+    public function apiCheckDuplicate(Request $request)
+    {
+        $clientId = $request->get('client_id');
+        $periodId = $request->get('period_id');
+        $excludeId = $request->get('exclude_id'); // exclude current record when editing
+
+        if (!$clientId || !$periodId) {
+            return response()->json(['duplicate' => false]);
+        }
+
+        $query = Emp201Declaration::where('client_id', $clientId)
+            ->where('period_id', $periodId)
+            ->where('status', 1); // only check active records
+
+        if ($excludeId) {
+            $query->where('id', '!=', $excludeId);
+        }
+
+        $existing = $query->first();
+
+        if ($existing) {
+            // Get the period name for the alert message
+            $period = DB::table('cims_document_periods')->where('id', $periodId)->first();
+            $periodName = $period ? $period->period_name : 'this period';
+
+            // Get client code
+            $clientCode = $existing->client_code ?? '';
+
+            return response()->json([
+                'duplicate' => true,
+                'period_name' => $periodName,
+                'client_code' => $clientCode,
+                'existing_id' => $existing->id,
+            ]);
+        }
+
+        return response()->json(['duplicate' => false]);
+    }
+
+    /**
+     * AJAX: Log an audit entry (e.g. duplicate override).
+     */
+    public function apiAuditLog(Request $request)
+    {
+        $data = $request->only([
+            'client_id', 'client_code', 'return_type',
+            'period_id', 'period_name', 'action', 'notes'
+        ]);
+
+        $data['user_id'] = Auth::id();
+        $data['user_name'] = Auth::user() ? Auth::user()->first_name . ' ' . Auth::user()->last_name : 'Unknown';
+        $data['ip_address'] = $request->ip();
+        $data['created_at'] = now();
+        $data['updated_at'] = now();
+
+        DB::table('cims_audit_log')->insert($data);
+
+        return response()->json(['success' => true]);
+    }
+}

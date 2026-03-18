@@ -1,0 +1,11 @@
+{
+    "name": "CustomerStatements",
+    "alias": "customerstatements",
+    "description": "Customer Statement and Aging Module - generates statements from GrowCRM invoices and payments",
+    "keywords": ["statements", "invoices", "aging", "customer"],
+    "priority": 0,
+    "providers": [
+        "Modules\\CustomerStatements\\Providers\\ModuleServiceProvider"
+    ],
+    "files": []
+}
