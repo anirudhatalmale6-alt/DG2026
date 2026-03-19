@@ -64,6 +64,7 @@ class Product extends Model
         'load_index',
         'speed_rating',
         'pattern_type',
+        'image_url',
         'cost_price',
         'sell_price',
         'markup_pct',

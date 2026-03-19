@@ -3,6 +3,7 @@
 @section('title', 'New Quote')
 
 @push('styles')
+@include('cimstyredash::partials.brand-logo-styles')
 <style>
     /* ---- Quote Builder Layout ---- */
     .quote-builder-left { min-height: 80vh; }
@@ -247,6 +248,7 @@
                                 <table class="table table-sm table-hover table-bordered">
                                     <thead class="table-light">
                                         <tr>
+                                            <th style="width:55px">Image</th>
                                             <th>Brand</th>
                                             <th>Model</th>
                                             <th>Size</th>
@@ -583,7 +585,9 @@
                     const tr = document.createElement('tr');
                     const totalStock = p.total_stock || 0;
                     const brandLogoHtml = p.brand_logo ? '<span class="brand-logo-box me-1"><img src="/public/modules/cimstyredash/brands/' + escHtml(p.brand_logo) + '" alt="" onerror="this.parentElement.style.display=\'none\'"></span>' : '';
-                    tr.innerHTML = '<td><div class="d-flex align-items-center gap-1">' + brandLogoHtml + escHtml(p.brand) + '</div></td>' +
+                    const productImgHtml = p.image_url ? '<span class="product-img-box" onclick="showProductImage(this)"><img src="/public/modules/cimstyredash/products/' + escHtml(p.image_url) + '" alt="" onerror="this.parentElement.style.display=\'none\'"></span>' : '';
+                    tr.innerHTML = '<td class="text-center">' + productImgHtml + '</td>' +
+                        '<td><div class="d-flex align-items-center gap-1">' + brandLogoHtml + escHtml(p.brand) + '</div></td>' +
                         '<td>' + escHtml(p.model_name || '-') + '</td>' +
                         '<td>' + escHtml(p.size) + '</td>' +
                         '<td class="text-end">' + formatMoney(p.cost_price) + '</td>' +
@@ -635,6 +639,7 @@
             product_id: product.id,
             brand: product.brand,
             brand_logo: product.brand_logo || '',
+            image_url: product.image_url || '',
             model_name: product.model_name || '',
             size: product.size,
             load_index: product.load_index || '',
@@ -699,12 +704,16 @@
     }
 
     function buildOptionPane(opt, idx) {
+        const productImgPane = opt.image_url ? '<span class="product-img-box-lg me-3" onclick="showProductImage(this)"><img src="/public/modules/cimstyredash/products/' + escHtml(opt.image_url) + '" alt="" onerror="this.parentElement.style.display=\'none\'"></span>' : '';
         return '<div class="option-details">' +
             '<div class="d-flex justify-content-between align-items-start mb-3">' +
-                '<div>' +
+                '<div class="d-flex align-items-center">' +
+                    productImgPane +
+                    '<div>' +
                     (opt.brand_logo ? '<span class="brand-logo-box me-2"><img src="/public/modules/cimstyredash/brands/' + escHtml(opt.brand_logo) + '" alt="" onerror="this.parentElement.style.display=\'none\'"></span>' : '') +
                     '<strong>' + escHtml(opt.brand) + '</strong> ' + escHtml(opt.model_name) + ' (' + escHtml(opt.size) + ')' +
                     (opt.load_index ? ' | ' + escHtml(opt.load_index) + '/' + escHtml(opt.speed_rating) : '') +
+                    '</div>' +
                 '</div>' +
                 '<div>' +
                     (!opt.is_selected ? '<button type="button" class="btn btn-sm btn-outline-success me-1 btn-select-option" data-idx="' + idx + '"><i class="fas fa-check"></i> Select</button>' : '<span class="badge bg-success">Selected</span> ') +
@@ -1029,5 +1038,16 @@
     recalculateTotals();
 
 })();
+
+// Product image popup (global)
+function showProductImage(el) {
+    var img = el.querySelector('img');
+    if (!img) return;
+    var overlay = document.createElement('div');
+    overlay.className = 'product-img-modal-overlay';
+    overlay.innerHTML = '<img src="' + img.src + '" alt="Product Image">';
+    overlay.addEventListener('click', function() { overlay.remove(); });
+    document.body.appendChild(overlay);
+}
 </script>
 @endpush

@@ -128,6 +128,7 @@
                         <table class="table table-striped table-hover table-bordered mb-0">
                             <thead>
                                 <tr>
+                                    <th style="width:60px">Image</th>
                                     <th>Product Code</th>
                                     <th>Brand</th>
                                     <th>Model</th>
@@ -143,6 +144,11 @@
                             <tbody>
                                 @forelse($products as $product)
                                     <tr>
+                                        <td class="text-center">
+                                            @if($product->image_url)
+                                                <span class="product-img-box" onclick="showProductImage(this)"><img src="{{ asset('modules/cimstyredash/products/' . $product->image_url) }}" alt="{{ $product->model_name }}" onerror="this.parentElement.style.display='none'"></span>
+                                            @endif
+                                        </td>
                                         <td>{{ $product->product_code }}</td>
                                         <td>
                                             <div class="d-flex align-items-center gap-2">
@@ -180,7 +186,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="10" class="text-center text-muted py-4">
+                                        <td colspan="11" class="text-center text-muted py-4">
                                             <i class="fas fa-inbox fa-2x mb-2 d-block"></i>
                                             No products found.
                                         </td>
@@ -206,3 +212,17 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+function showProductImage(el) {
+    var img = el.querySelector('img');
+    if (!img) return;
+    var overlay = document.createElement('div');
+    overlay.className = 'product-img-modal-overlay';
+    overlay.innerHTML = '<img src="' + img.src + '" alt="Product Image">';
+    overlay.addEventListener('click', function() { overlay.remove(); });
+    document.body.appendChild(overlay);
+}
+</script>
+@endpush

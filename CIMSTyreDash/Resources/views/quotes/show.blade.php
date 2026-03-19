@@ -242,6 +242,7 @@
                                         <table class="table table-bordered {{ $option->is_selected ? 'option-selected' : '' }}">
                                             <thead class="table-light">
                                                 <tr>
+                                                    <th style="width:60px">Image</th>
                                                     <th>Brand</th>
                                                     <th>Model</th>
                                                     <th>Size</th>
@@ -256,6 +257,11 @@
                                             </thead>
                                             <tbody>
                                                 <tr>
+                                                    <td class="text-center">
+                                                        @if($option->product && $option->product->image_url)
+                                                            <span class="product-img-box" onclick="showProductImage(this)"><img src="{{ asset('modules/cimstyredash/products/' . $option->product->image_url) }}" alt="{{ $option->product->model_name }}" onerror="this.parentElement.style.display='none'"></span>
+                                                        @endif
+                                                    </td>
                                                     <td>
                                                         <div class="d-flex align-items-center gap-2">
                                                             @if($option->product && $option->product->brand && $option->product->brand->logo_url)
@@ -400,3 +406,17 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+function showProductImage(el) {
+    var img = el.querySelector('img');
+    if (!img) return;
+    var overlay = document.createElement('div');
+    overlay.className = 'product-img-modal-overlay';
+    overlay.innerHTML = '<img src="' + img.src + '" alt="Product Image">';
+    overlay.addEventListener('click', function() { overlay.remove(); });
+    document.body.appendChild(overlay);
+}
+</script>
+@endpush
